@@ -1,0 +1,310 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0087)https://t-square.gatech.edu/portal/tool/6907c8de-0a0b-421b-9968-0de676345044?panel=Main -->
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta http-equiv="Content-Style-Type" content="text/css">
+    <title>Assignments</title>
+    <link href="tool_base.css" type="text/css" rel="stylesheet" media="all">
+<link href="tool.css" type="text/css" rel="stylesheet" media="all">
+<script type="text/javascript" language="JavaScript" src="headscripts.js"></script>
+<script type="text/javascript" language="JavaScript">var sakai = sakai || {}; sakai.editor = sakai.editor || {};  sakai.locale = sakai.locale || {};
+sakai.locale.userCountry = 'US';
+sakai.locale.userLanguage = 'en';
+sakai.locale.userLocale = 'en_US';
+sakai.editor.collectionId = '/group/gtc-808b-cfd0-58b1-9976-0db2875f82ba/';
+sakai.editor.enableResourceSearch = false;</script>
+<script type="text/javascript" language="JavaScript"></script>
+<script type="text/javascript" language="JavaScript" src="fckeditor.js"></script>
+<script type="text/javascript" language="JavaScript" src="fckeditor.launch.js"></script>
+	
+    
+    	            
+    
+  </head>
+  <body onload="setMainFrameHeight(&#39;Main6907c8dex0a0bx421bx9968x0de676345044&#39;);setFocus(focus_path);" marginwidth="0" marginheight="0">
+<!-- $Id$ -->
+<!-- start: chef_assignments_student_view_submission.vm  -->
+<!-- $Id$ -->
+<!-- start:  assignment_macros.vm -->
+<!-- end:  assignment_macros.vm --><script type="text/javascript" src="jquery.js"></script>
+<link href="assignment.css" type="text/css" rel="stylesheet" media="all">
+<script type="text/javascript" src="assignments.js"></script>
+<script type="text/javascript">
+$(document).ready(function(){
+    setupToggleAreas('toggleAnchor', 'toggledContent', false, 'fast');
+    $('#submissionFileCount').val(1);
+    $('#addMoreAttachmentControls').click(function(e){
+        e.preventDefault();
+        if ($('#submissionFileCount').val() < 5) {
+            var $input = $('#clonableUpload').clone().removeAttr('id').addClass('cloned').appendTo('#clonedHolder').children('input');
+            $input.val('');
+            var $count = $('#submissionFileCount').val();
+            var $nameCount = "upload"+$count;
+            $input.attr("name", $nameCount);
+            $('#submissionFileCount').val(parseInt($('#submissionFileCount').val(), 10) + 1);
+            if ($('#submissionFileCount').val() == 5) {
+                $('#addMoreAttachmentControls').hide();
+                $('#addMoreAttachmentControlsInactive').show();
+            }
+        }
+        $('.cloned a').show();
+        resizeFrame('grow');
+    });
+    
+});
+var notifyDeleteControl = function(){
+    $('#submissionFileCount').val(parseInt($('#submissionFileCount').val(), 10) - 1);
+    if ($('#submissionFileCount').val() < 5) {
+        $('#addMoreAttachmentControls').show();
+        $('#addMoreAttachmentControlsInactive').hide();
+    }
+};
+
+function submitform(id)
+{
+	var theForm = document.getElementById(id);
+	if(theForm && theForm.onsubmit)
+	{
+		theForm.onsubmit();
+	}
+	if(theForm && theForm.submit)
+	{
+		theForm.submit();
+	}
+}
+		
+</script>
+
+
+<div class="portletBody">
+															<h3>Assignment
+																	<span class="highlight">
+						 	- In progress
+							</span>
+										</h3>
+																					<p class="instruction">
+									 Complete the form, then choose the appropriate button at the bottom.
+							</p>	
+						<table class="itemSummary" summary="The assignment info">
+				<tbody><tr>
+					<th>
+						Title
+					</th>
+					<td>
+						Homework 3
+																	</td>
+				</tr>
+				<tr>
+					<th>
+						Due
+					</th>
+					<td>
+						Mar 27, 2015 11:55 pm
+					</td>
+				</tr>
+																					<tr>
+					<th>
+						Status
+					</th>
+					<td>
+													Not Started
+											</td>
+				</tr>
+																			<tr>	
+							<th>
+								Grade Scale
+							</th>
+							<td>
+								Points
+																	(max 20.0)
+															</td>
+						</tr>
+																						<tr>
+						<th>
+								Modified by instructor
+						</th>
+						<td>
+							Mar 21, 2015 9:54 am
+						</td>
+					</tr>
+											</tbody></table>
+		<h4>
+			Instructions
+		</h4>
+		
+					<div class="textPanel">&nbsp;<span style="color: rgb(35, 35, 35); font-family: Arial; font-size: 13px; -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">For this assignment you will design and implement your own reliable data transfer protocol. You will implement this protocol in application space on top of UDP. You will develop and document an API for your protocol. Then you will demonstrate your reliable API by building a simple file transfer application.</span>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Part 1 of this assignment is to design and document your protocol and API. You will submit this documentation as the first milestone on March 27. The program implementation will be due on April 12.</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">You may work on this project individually or in teams of two. We can not allow teams of more than two. The same grading criteria will be applied for all projects, regardless of whether there is one or two people submitting the assignment.</p>
+<p style="margin: 0px 0px 12px; font-size: 16px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><b>Introduction&nbsp;</b></p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">In this assignment you will design and implement your own <b>Reliable Transfer Protocol </b>-- lets call it RxP for now (you can choose another name if you prefer).&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">a. RxP must be as reliable as TCP&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">b. RxP must be connection-oriented&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">c. RxP must provide window-based flow control&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">d. RxP must provide byte-stream communication semantics (as TCP does).&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-family: Times; -webkit-text-stroke-color: rgb(0, 0, 0); -webkit-text-stroke-width: initial; min-height: 14px;">&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 16px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><b>2- Reliable Transport Protocol&nbsp;</b></p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">The RxP design specification will need to specify <i>at least </i>the following:&nbsp;</p>
+<ul style="list-style-type: none">
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">- &nbsp;a high-level description of how RxP works and of any special features you have designed <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span></li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">- &nbsp;a detailed description of the RxP header structure and its header fields <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span></li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">- &nbsp;finite state-machine diagrams for the two RxP end-points <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span></li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">- &nbsp;a formal description of your API (the functions it exports to the application layer) <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span></li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">- &nbsp;algorithmic descriptions for any non-trivial algorithms in RxP (e.g., how you detect corrupted packets)&nbsp;</li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span>In the first page of the report (after the cover page), please provide clear answers to the following questions: <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span></li>
+</ul>
+<ul style="list-style-type: none">
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">- &nbsp;Is your protocol non-pipelined (such as Stop-and-Wait) or pipelined (such as Selective Repeat)? <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span></li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">- &nbsp;How does your protocol handle lost packets? <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span></li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">- &nbsp;How does your protocol handle corrupted packets? <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span></li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">- &nbsp;How does your protocol handle duplicate packets? <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span></li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">- &nbsp;How does your protocol handle out-of-order packets? <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span></li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">- &nbsp;How does your protocol provide bi-directional data transfers? <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span></li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">- &nbsp;Does your protocol use any non-trivial checksum algorithm (i.e., anything more sophisticated than the IP <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span>checksum)? <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span></li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">- &nbsp;Does your protocol have any other special features for which you request extra credit? Explain.&nbsp;</li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">&nbsp;</li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Your protocol design must support all features to receive full credit (e.g. window-based flow control, bi-directional data transfer) even if you don't plan to completely implement them all.</li>
+    <li style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Please note: you may modify the RxP protocol after you submit your design report. Your design report will be graded based on what you submit by the first deadline. You will need to submit a revised design report together with the final implementation. If you make changes to your design during the implementation phase, please make sure that you highlight the differences between your original design report and the modified design report that describes what you have actually implemented. <span style="font-size: 12px; font-family: Times; color: rgb(0, 0, 0); -webkit-text-stroke-color: rgb(0, 0, 0);"><br>
+    </span></li>
+</ul>
+<p style="margin: 0px 0px 12px; font-size: 16px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><b>3- Network Emulator (NetEmu)&nbsp;</b></p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">As previously mentioned, we will provide you with the source code for a Network Emulator (NetEmu) that will be causing random network artifacts, i.e., packet losses, corrupted packets, duplicate packets, packet re-ordering and packet delays. NetEmu will be parameterized with the following command-line arguments:&nbsp;</p>
+<p style="margin: 0px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">-l XX</p>
+<p style="margin: 0px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">-c XX</p>
+<p style="margin: 0px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">-d XX</p>
+<p style="margin: 0px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">-r XX</p>
+<p style="margin: 0px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">-D YY</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Packet loss probability (e.g., “-l 10” means 10% loss probability) Packet corruption probability (note that this may corrupt your RxP header) Packet duplication probability<br>
+Packet re-ordering probability<br>
+Average packet delay (in milliseconds) in NetEmu queue&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Your RxP client and server will need to communicate through NetEmu -- they should never exchange packets directly. We will give you the IP address and port number for NetEmu.&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Your RxP packets will need to be encapsulated in UDP packets. In other words, RxP will be using the best-effort connectionless services of UDP (instead of using TCP sockets or raw IP sockets).&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Your RxP client and server will need to run at the same host (same IP address). This will allow NetEmu to easily forward packets between the client and server.&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Additionally, you need to make sure that the RxP client’s UDP socket binds to a port number that is an EVEN number, say X. Then, you need to make sure that the RxP server’s UDP socket binds to the port number X+1 (an odd number). This simple “trick” will allow NetEmu to know if each UDP packet was sent by the RxP client or RxP server and forward it accordingly.&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">So, if your RxP client and RxP server run at a host with IP address A<span style="font-size: 8px; vertical-align: -1.5px;">H</span>, while NetEmu runs at a host with IP address A<span style="font-size: 8px; vertical-align: -1.5px;">E </span>and port number P<span style="font-size: 8px; vertical-align: -1.5px;">E</span>, any packet sent from the RxP client will need to have:&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Source IP address: A<span style="font-size: 8px; vertical-align: -1.5px;">H </span>, Source-port: X, Destination IP address: A<span style="font-size: 8px; vertical-align: -1.5px;">E</span>, Destination port: P<span style="font-size: 8px; vertical-align: -1.5px;">E</span><span style="font-size: 8px;"><br>
+</span>NetEmu will forward that message (if it is not dropped) to the RxP server with a new UDP packet that has:&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Source IP address: A<span style="font-size: 8px; vertical-align: -1.5px;">E </span>, Source-port: P<span style="font-size: 8px; vertical-align: -1.5px;">E</span>, Destination IP address: A<span style="font-size: 8px; vertical-align: -1.5px;">H</span>, Destination port: X+1 Similarly, any packet sent from the RxP server will need to have:&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Source IP address: A<span style="font-size: 8px; vertical-align: -1.5px;">H </span>, Source-port: X+1, Destination IP address: A<span style="font-size: 8px; vertical-align: -1.5px;">E</span>, Destination port: P<span style="font-size: 8px; vertical-align: -1.5px;">E </span>NetEmu will forward that message (if it is not dropped) to the RxP client with a new UDP packet that has:&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Source IP address: A<span style="font-size: 8px; vertical-align: -1.5px;">E </span>, Source-port: P<span style="font-size: 8px; vertical-align: -1.5px;">E</span>, Destination IP address: A<span style="font-size: 8px; vertical-align: -1.5px;">H</span>, Destination port: X&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 16px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><b>4- File Transfer Application (FxA)&nbsp;</b></p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">FxA is a very simple client-server file transfer application. The FxA commands should be as follows:&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><b>FxA SERVER<br>
+</b>● <b>Command-line: </b><span style="font-family: &#39;Courier New&#39;;">FxA-server X A P&nbsp;</span></p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">The command-line arguments are:<br>
+X: the port number at which the FxA-server’s UDP socket should bind to (odd number)&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">A: the IP address of NetEmu<br>
+P: the UDP port number of NetEmu&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><span style="font-family: Arial;">● <b>Command: </b></span>window W (only for projects that support pipelined and bi- directional transfers)&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">W: the maximum receiver’s window-size at the FxA-Server (in segments).&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><span style="font-family: Arial;">● <b>Command: </b></span>terminate Shut-down FxA-Server gracefully.&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><b>FxA CLIENT<br>
+</b>● <b>Command-line: </b><span style="font-family: &#39;Courier New&#39;;">FxA-client X A P&nbsp;</span></p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">The command-line arguments are:&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">X: the port number at which the FxA-client’s UDP socket should bind to (even number). Please remember that this port number should be equal to the server’s port number minus 1.&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">A: the IP address of NetEmu<br>
+P: the UDP port number of NetEmu&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><span style="font-family: Arial;">● <b>Command: </b></span>connect - The FxA-client connects to the FxA-server (running at the same IP host).&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><span style="font-family: Arial;">● <b>Command: </b></span>get F - The FxA-client downloads file F from the server (if F exists in the same directory with the FxA-server program).&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><span style="font-family: Arial;">● <b>Command: </b></span>post F - The FxA-client uploads file F to the server (if F exists in the same directory with the FxA-client program). This feature will be treated as extra credit for up to 20 project points.</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><span style="font-family: Arial;">● <b>Command: </b></span>window W (only for projects that support configurable flow window) W: the maximum receiver’s window-size at the FxA-Client (in segments).&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: &#39;Courier New&#39;; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><span style="font-family: Arial;">● <b>Command: </b></span>disconnect -&nbsp;The FxA-client terminates gracefully from the FxA-server.&nbsp;</p>
+<p style="margin: 0px 0px 12px; font-size: 16px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;"><b>5- Grading&nbsp;</b></p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">The following table gives the maximum number of points for various components of the project. Note that if you design and implement successfully <b>all </b>of the following features, you can get up to 100 points.</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">This is a significant project and some of you may not be able to get it completely working. We strongly recommend that you use the grading rubric to plan out an incremental approach and save a snapshot of your working project at each point along the way so that you are sure to have something you can turn in for partial credit.</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Design Report - 20 Homework Points</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Working API with demonstration of connection establishment and close - 20 project points</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Working file transfer using Stop-And-Wait ARQ - 20 project points</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Working file transfer with random bit errors - 10 project points</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Working file transfer with random lost packets - 10 project points</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Working file transfer with Sliding Window ARQ - 20 project points</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Working file transfer with Sliding Window and re-ordered packets - 10 project points</p>
+<p style="margin: 0px 0px 12px; font-size: 13px; font-family: Arial; color: rgb(35, 35, 35); -webkit-text-stroke-color: rgb(35, 35, 35); -webkit-text-stroke-width: initial;">Working file transfer with configurable flow window size - 10 project points<br>
+<br>
+All of the above "file transfer" testing will be done using your "get" command. That is the required basic functionality. For up to 20 points extra credit you can implement "bi-directional" data and support the "put" command.<br>
+&nbsp;</p>
+<div>&nbsp;</div></div>
+																											<hr class="itemSeparator">
+						<h3>Submission</h3> 
+		
+
+
+					<form name="addSubmissionForm" id="addSubmissionForm" action="6907c8de-0a0b-421b-9968-0de676345044.html" method="post" onsubmit="return true;" enctype="multipart/form-data">
+		<input type="hidden" name="eventSubmit_doRead_add_submission_form" value="x">
+		<input type="hidden" name="option" id="option" value="cancel">
+		<input type="hidden" name="currentAttachment" value="">
+		<input type="hidden" name="assignmentId" value="/assignment/a/gtc-808b-cfd0-58b1-9976-0db2875f82ba/23320f86-a7b2-4bf1-8501-71843cc9f279">
+																				
+							<h4>Assignment Text</h4>
+							<p class="instruction">
+																								This assignment allows submissions using both the text box below and attached documents. Type your comments in the box below and use the Add Attachments button to include other documents. Save frequently while working.
+																						</p>
+							<table border="0">
+								<tbody><tr>
+									<td>
+										<input type="hidden" id="Assignment.view_submission_text___Config" value="CurrentFolder=%2Fgroup%2Fgtc-808b-cfd0-58b1-9976-0db2875f82ba%2F&amp;ImageBrowserURL=%2Flibrary%2Feditor%2FFCKeditor%2Feditor%2Ffilemanager%2Fbrowser%2Fdefault%2Fbrowser.html%3FConnector%3D%2Fsakai-fck-connector%2Ffilemanager%2Fconnector%2Fgroup%2Fgtc-808b-cfd0-58b1-9976-0db2875f82ba%2F%26Type%3DImage%26CurrentFolder%3D%2Fgroup%2Fgtc-808b-cfd0-58b1-9976-0db2875f82ba%2F&amp;LinkBrowserURL=%2Flibrary%2Feditor%2FFCKeditor%2Feditor%2Ffilemanager%2Fbrowser%2Fdefault%2Fbrowser.html%3FConnector%3D%2Fsakai-fck-connector%2Ffilemanager%2Fconnector%2Fgroup%2Fgtc-808b-cfd0-58b1-9976-0db2875f82ba%2F%26Type%3DLink%26CurrentFolder%3D%2Fgroup%2Fgtc-808b-cfd0-58b1-9976-0db2875f82ba%2F&amp;FlashBrowserURL=%2Flibrary%2Feditor%2FFCKeditor%2Feditor%2Ffilemanager%2Fbrowser%2Fdefault%2Fbrowser.html%3FConnector%3D%2Fsakai-fck-connector%2Ffilemanager%2Fconnector%2Fgroup%2Fgtc-808b-cfd0-58b1-9976-0db2875f82ba%2F%26Type%3DFlash%26CurrentFolder%3D%2Fgroup%2Fgtc-808b-cfd0-58b1-9976-0db2875f82ba%2F&amp;ImageUploadURL=%2Fsakai-fck-connector%2Ffilemanager%2Fconnector%2Fgroup%2Fgtc-808b-cfd0-58b1-9976-0db2875f82ba%2F%3FType%3DImage%26Command%3DQuickUpload%26Type%3DImage%26CurrentFolder%3D%2Fgroup%2Fgtc-808b-cfd0-58b1-9976-0db2875f82ba%2F&amp;FlashUploadURL=%2Fsakai-fck-connector%2Ffilemanager%2Fconnector%2Fgroup%2Fgtc-808b-cfd0-58b1-9976-0db2875f82ba%2F%3FType%3DFlash%26Command%3DQuickUpload%26Type%3DFlash%26CurrentFolder%3D%2Fgroup%2Fgtc-808b-cfd0-58b1-9976-0db2875f82ba%2F&amp;LinkUploadURL=%2Fsakai-fck-connector%2Ffilemanager%2Fconnector%2Fgroup%2Fgtc-808b-cfd0-58b1-9976-0db2875f82ba%2F%3FType%3DFile%26Command%3DQuickUpload%26Type%3DLink%26CurrentFolder%3D%2Fgroup%2Fgtc-808b-cfd0-58b1-9976-0db2875f82ba%2F&amp;CustomConfigurationsPath=%2Flibrary%2Feditor%2FFCKeditor%2Fconfig.js" style="display:none"><iframe id="Assignment.view_submission_text___Frame" src="fckeditor.html" width="675" height="275" frameborder="0" scrolling="no" style="margin: 0px; padding: 0px; border: 0px; width: 675px; height: 275px; background-image: none; background-color: transparent;"></iframe><textarea cols="80" rows="30" wrap="virtual" name="Assignment.view_submission_text" id="Assignment.view_submission_text" style="display: none;"></textarea>						
+														<script type="text/javascript" defer="1">sakai.editor.launch('Assignment.view_submission_text');</script>	
+										</td>
+								</tr>
+							</tbody></table>
+																														
+																		<div class="highlightPanel" style="background:#ffe">
+					<h3 style="margin-top:0;margin-bottom:.5em">
+						Attachments
+					</h3>	
+																					<p class="instruction">No attachments yet</p>
+																<div class="highlightPanel specialLink" style="margin:0;padding-bottom:.5em;background:#fff">
+																																										<input type="hidden" name="submissionFileCount" id="submissionFileCount" value="1">
+									<table border="0" cellpadding="0" cellspacing="0" class="listHier  centerLines" style="width:auto;margin:0">
+										<tbody><tr>
+											<td>
+												<span>Select a file from computer</span>
+											</td>
+											<td>
+												<div id="clonableUpload"> 
+													<input type="file" name="upload" class="upload" id="clonableUpload" onchange="javascript:showNotif(&#39;submitnotifxxx&#39;,&#39;post&#39;,&#39;addSubmissionForm&#39;);document.getElementById(&#39;addSubmissionForm&#39;).action=&#39;https://t-square.gatech.edu/portal/tool/6907c8de-0a0b-421b-9968-0de676345044?panel=Main&amp;sakai_action=doAttachUpload&#39;;submitform(&#39;addSubmissionForm&#39;);" "=""> 
+													<span id="submitnotifxxx" class="messageProgress" style="visibility:hidden">Uploading file(s)</span>
+												</div>
+											</td>
+											<td>
+												<span class="navIntraToolLink">
+													<input class="disableme enabled" type="button" value="or select files from workspace or site" name="attach" id="attach" accesskey="a" onclick="document.addSubmissionForm.onsubmit();document.addSubmissionForm.option.value=&#39;attach&#39;; document.addSubmissionForm.submit(); return false;">
+												</span>	
+											</td>
+										</tr>	
+										<tr>
+											<td></td>
+											<td id="clonedHolder"></td>
+											<td></td>
+											<td></td>										
+											</tr>
+									</tbody></table>	
+									
+																					</div>
+																							</div>
+				
+																														<div class="act messageInformation">
+							<input type="button" class="active" name="post" accesskey="s" id="post" value="Submit" onclick="document.addSubmissionForm.onsubmit();showNotif(&#39;submitnotif&#39;,&#39;post&#39;,&#39;addSubmissionForm&#39;); document.addSubmissionForm.option.value=&#39;post&#39;; document.addSubmissionForm.submit(); return false;">
+																	<input class="disableme" type="button" name="preview" accesskey="v" id="preview" value="Preview" onclick="document.addSubmissionForm.onsubmit();showNotif(&#39;submitnotif&#39;,&#39;preview&#39;,&#39;addSubmissionForm&#39;);document.addSubmissionForm.option.value=&#39;preview&#39;; document.addSubmissionForm.submit(); return false;">
+							<input class="disableme" type="button" name="save" accesskey="d" id="save" value="Save Draft" onclick="document.addSubmissionForm.onsubmit();showNotif(&#39;submitnotif&#39;,&#39;save&#39;,&#39;addSubmissionForm&#39;);document.addSubmissionForm.option.value=&#39;save&#39;; document.addSubmissionForm.submit(); return false;">
+														<input class="disableme" type="button" name="cancel" accesskey="x" id="cancel" value="Cancel" onclick="document.addSubmissionForm.onsubmit();document.addSubmissionForm.option.value=&#39;cancel&#39;; document.addSubmissionForm.submit(); return false;">
+							<span class="messageInformation">Don't forget to save or submit</span>
+									<span id="submitnotif" style="visibility:hidden">Processing......</span>
+			</div>
+			</form>
+	</div>
+<!-- end: chef_assignments_student_view_submission.vm  -->
+<iframe src="javascript:void(0)" frameborder="0" scrolling="no" style="margin: 0px; padding: 0px; border: 0px; height: 0px; width: 0px; position: absolute; z-index: 10000; background-image: none; background-color: transparent;"></iframe><iframe src="javascript:void(0)" frameborder="0" scrolling="no" style="margin: 0px; padding: 0px; border: 0px; height: 0px; width: 0px; position: absolute; z-index: 10000; background-image: none; background-color: transparent;"></iframe><iframe src="javascript:void(0)" frameborder="0" scrolling="no" style="margin: 0px; padding: 0px; border: 0px; height: 0px; width: 0px; position: absolute; z-index: 10000; background-image: none; background-color: transparent;"></iframe><iframe src="javascript:void(0)" frameborder="0" scrolling="no" style="margin: 0px; padding: 0px; border: 0px; height: 0px; width: 0px; position: absolute; z-index: 10000; background-image: none; background-color: transparent;"></iframe><iframe src="javascript:void(0)" frameborder="0" scrolling="no" style="margin: 0px; padding: 0px; border: 0px; height: 0px; width: 0px; position: absolute; z-index: 10000; background-image: none; background-color: transparent;"></iframe><iframe src="javascript:void(0)" frameborder="0" scrolling="no" style="margin: 0px; padding: 0px; border: 0px; height: 0px; width: 0px; position: absolute; z-index: 10000; background-image: none; background-color: transparent;"></iframe><iframe src="javascript:void(0)" frameborder="0" scrolling="no" style="margin: 0px; padding: 0px; border: 0px; height: 0px; width: 0px; position: absolute; z-index: 10000; background-image: none; background-color: transparent;"></iframe></body><script>window.FCKeditorAPI = {Version : "2.6.4.1",VersionBuild : "23187",Instances : window.FCKeditorAPI && window.FCKeditorAPI.Instances || {},GetInstance : function( name ){return this.Instances[ name ];},_FormSubmit : function(){for ( var name in FCKeditorAPI.Instances ){var oEditor = FCKeditorAPI.Instances[ name ] ;if ( oEditor.GetParentForm && oEditor.GetParentForm() == this )oEditor.UpdateLinkedField() ;}this._FCKOriginalSubmit() ;},_FunctionQueue	: window.FCKeditorAPI && window.FCKeditorAPI._FunctionQueue || {Functions : new Array(),IsRunning : false,Add : function( f ){this.Functions.push( f );if ( !this.IsRunning )this.StartNext();},StartNext : function(){var aQueue = this.Functions ;if ( aQueue.length > 0 ){this.IsRunning = true;aQueue[0].call();}else this.IsRunning = false;},Remove : function( f ){var aQueue = this.Functions;var i = 0, fFunc;while( (fFunc = aQueue[ i ]) ){if ( fFunc == f )aQueue.splice( i,1 );i++ ;}this.StartNext();}}}</script></html>
