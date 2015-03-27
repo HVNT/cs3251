@@ -1,9 +1,18 @@
-import ctypes, socket
+import ctypes, socket, math, struct
+import logging
 
 # define types for use in header fields
 c_uint8 = ctypes.c_uint8
 c_uint16 = ctypes.c_uint16
 c_uint32 = ctypes.c_uint32
+
+# describes the status of a 
+# connection (Enum)
+class ConnectionStatus:
+	NO_CONN = 1
+	IDLE = 2
+	SENDING = 3
+	RECEVING = 4
 
 class Socket:
 	"""Socket contains all API methods needed
@@ -11,24 +20,87 @@ class Socket:
 	and receive data, and close the connection.
 	"""
 
-	def ConnectionStatus(Enum):
-		NOT_CONNECTED = 1
-		IDLE = 2
-		SENDING = 3
-		RECEIVING = 4
+	# static fields
+	MAX_SEQ_NUM = math.pow(2, 32)
 
+	# constructor
 	def __init__(self):
+
+		# timeout (milliseconds). 0 => no timeout
 		self.timeout = 0
+		# size of sender window (bytes)
 		self.sendWindow = 0
+		# size of receiver window (bytes)
 		self.rcvWindow = 0
-		self.connStatus = ConnectionStatus.NOT_CONNECTED
-		self.port = 0
+		# connection status (see ConnectionStatus)
+		self.connStatus = ConnectionStatus.NO_CONN
+		# destination address (ipaddress, port)
+		self.destAddr = ("", 0)
+		# source port
+		self.srcAddr = ("", 0)
+
+		# create UDP socket
+		self._socket = socket.socket(
+			socket.AF_INET, socket.SOCK_DGRAM)
 
 	def __del__(self):
+		# close connection if 
+		# object is destroyed
 		self.close()
+	
+	# properties with special behavior
+	@property
+	def nextSeqNum(self):
+		
+		# get next seq num and increment
+		seqNum = self._nextSeqNum
+		self._nextSeqNum += 1
+		
+		# wrap around if max has been reached
+		if self._nextSeqNum > Socket.MAX_SEQ_NUM:
+			self._nextSeqNum = 0
 
-	def create(self):
-		"""creates a socket bound to the given port"""
+		return seqNum
+
+	@nextSeqNum.setter
+	def nextSeqNum(self, value):
+	    self._nextSeqNum = value
+
+	@property
+	def nextAckNum(self):
+	    
+	    # get next ack num and increment
+		ackNum = self._nextAckNum
+		self._nextAckNum += 1
+		
+		# wrap around if max has been reached
+		if self._nextAckNum > Socket.MAX_SEQ_NUM:
+			self._nextAckNum = 0
+		
+		return ackNum
+
+	@nextAckNum.setter
+	def nextAckNum(self, value):
+	    self._nextAckNum = value
+
+	def bind(self, srcAddr):
+		"""binds socket to the given port. port is optional.
+		If no port is given, self.port is used. If self.port
+		has not been set, this method does nothing.
+		"""
+
+		if srcAddr:
+			self.srcAddr = srcAddr
+
+		if self.srcAddr:
+			try:
+				self._socket.bind(srcAddr)
+			except Exception, e:
+				logging.info('error binding: ' + \
+					repr(self.srcAddr) + \
+					' already in use') 
+				raise e
+
 
 	def connect(self, destAddr):
 		"""connects to destAddr given in format
@@ -48,62 +120,6 @@ class Socket:
 
 	def close(self):
 		"""closes the connection and unbinds the port"""
-
-class Connection:
-	"""Represents a connection. Contains a UDP
-	socket that is used to send and receive data.
-	"""
-
-	# nextSeqNum and nextAckNum are properties that
-	# auto-increment and auto-wrap 
-
-	@property
-	def nextSeqNum(self):
-		# get next seq num and increment
-		seqNum = self._nextSeqNum++
-		# wrap around if max has been reached
-		if self._nextSeqNum > math.pow(2,32):
-			self._nextSeqNum = 0
-	    return seqNum
-	@nextSeqNum.setter
-	def nextSeqNum(self, value):
-	    self._nextSeqNum = value
-
-	@property
-	def nextAckNum(self):
-	    # get next ack num and increment
-		ackNum = self._nextAckNum++
-		# wrap around if max has been reached
-		if self._nextAckNum > math.pow(2,32):
-			self._nextAckNum = 0
-	    return ackNum
-	@nextAckNum.setter
-	def nextAckNum(self, value):
-	    self._nextAckNum = value
-	
-	def __init__(self):
-		# public fields
-		self.socket = socket.socket(
-			socket.AF_INET, socket.SOCK_DGRAM)
-		self.srcPort = 0
-		self.destAddr = ()
-		self.nextSeqNum = 0
-		self.nextAckNum = 0
-
-	def __del__(self):
-		self.close()
-
-	def open(self):
-		"""opens a new connection"""
-
-	def send(self, packetArray):
-		"""sends an array of packets"""
-
-	def rcv(self):
-		"""receives data"""
-
-	def close(self):
-		"""closes the connection"""
 
 
 class Packet:
@@ -130,27 +146,27 @@ class Packet:
 		using pickling"""
 		return pickle.dumps(self)
 
-class HEADER(Structure):
+class Header:
 	"""Encapsulation of the header fields
 	associated with a packet. See API docs
 	for descriptions of each header field.
 	"""
 
-	__fields__ = [("srcPort", c_uint16),
-				  ("destPort", c_uint16),
-				  ("seqNum", c_uint32),
-				  ("ackNum", c_uint32),
-				  ("rcvWindow", c_uint16),
-				  ("checksum", c_uint16),
-				  ("opts", c_uint32)]
-
+	def __init__(self, *args, **kwargs):
+		self.srcPort = kwargs.srcPort
+		self.destPort = kwargs.destPort
+		self.seqNum = kwargs.seqNum
+		self.ackNum = kwargs.ackNum
+		self.rcvWindow = kwargs.rcvWindow
+		self.checksum = kwargs.checksum
+		self.varLength = kwargs.varLength
 
 class RxPException(Exception):
 	"""Exception that gives details on RxP related errors."""
 
 	def __init__(self, msg, innerException):
-        self.msg = msg
-        self.innerException = innerException
+		self.msg = msg
+		self.innerException = innerException
     
-    def __str__(self):
-        return self.msg + '\n' + repr(self.innerException)
+	def __str__(self):
+		return self.msg + '\n' + repr(self.innerException)
