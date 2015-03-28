@@ -3,7 +3,7 @@ import logging
 from collections import OrderedDict
 from sys import getsizeof
 
-class Socket(socket.socket):
+class Socket:
 	"""Socket contains all API methods needed
 	to bind to a port, create a connection, send
 	and receive data, and close the connection.
@@ -95,7 +95,6 @@ class Socket(socket.socket):
 		"""closes the connection and unbinds the port"""
 		pass
 
-
 class Packet:
 	"""Represents a single packet and includes
 	header and data.
@@ -105,14 +104,20 @@ class Packet:
 	MAX_SEQ_NUM = math.pow(2, 32)
 	# maximum data size for one 
 	# packet (bytes)
-	MAX_DATA_LENGTH = 4096
+	MAX_DATA_LENGTH = math.pow(2, 16)
 	# max window size for sender
 	# or receiver (packets)
-	MAX_WINDOW_SIZE = 4096
+	MAX_WINDOW_SIZE = math.pow(2, 16)
 
-	def __init__(self, header=None, data=None):
+	def __init__(self, header=None, data=""):
 		self.data = data
-		self.header = header
+		self.header = header or Header()
+
+		if len(self.data) > Packet.MAX_DATA_LENGTH:
+			raise RxPException(msg="too much data")
+
+		if len(self.data) < Packet.MAX_DATA_LENGTH:
+			pass
 
 	def createFromMessage(msg):
 		"""creates an array of packets from a 
@@ -129,7 +134,30 @@ class Packet:
 	def pickle(self):
 		""" returns a byte string representation
 		using pickling"""
-		pass
+
+		b = bytearray()
+		b.extend(self.header.pickle())
+		b.extend(self.data)
+
+		return b
+
+	@staticmethod
+	def unpickle(byteArr):
+		""" returns an instance of Packet
+		reconstructed from a byte string.
+		"""
+		p = Packet()
+
+		p.header = Header.unpickle(
+			byteArr[0:Header.LENGTH])
+		p.data = str(byteArr[Header.LENGTH:])
+
+		return p
+
+	def __str__(self):
+		# TODO edit to print header data
+		d = self.___dict__ 
+		return str(d)
 
 class Header:
 	"""Encapsulation of the header fields
@@ -154,16 +182,21 @@ class Header:
 		("attrs", uint32, 4)
 		)
 
+	# sum of the length of all fields (bytes)
+	LENGTH = sum(map(lambda x: x[2], FIELDS))
+
 	def __init__(self, **kwargs):
 		self.fields = {}
 		keys = kwargs.keys()
 
 		for item in Header.FIELDS:
-			field = item[0]
-			ctype = item[1]
-			if field in keys:
-				self.fields[field] = HeaderField(
-					kwargs[field], ctype)
+			fieldName = item[0]
+			fieldType = item[1]
+			if fieldName in keys:
+				field = kwargs[fieldName]
+			else:
+				field = 0
+			self.fields[fieldName] = field
 
 	def pickle(self):
 		"""converts the object to a binary string
@@ -172,9 +205,14 @@ class Header:
 		"""
 		byteArr = bytearray()
 
-		# add fields to bytearray one byte at a time
-		for key, item in self.fields.items():
-			byteArr.extend(bytearray(item.pickle()))
+		# add fields to bytearray one field at a time
+		for item in Header.FIELDS:
+			fieldName = item[0]
+			fieldType = item[1]
+			fieldVal = self.fields[fieldName]
+			if fieldVal is not None:
+				byteArr.extend(bytearray(
+					fieldType(fieldVal)))
 
 		return byteArr
 
@@ -185,51 +223,41 @@ class Header:
 		about the order and size of each field.
 		"""
 
-		fields = {}
+		h = Header()
 		base = 0
-		for field in Header.FIELDS:
+		for item in Header.FIELDS:
 
-			fieldName = field[0]
-			fieldType = field[1]
-			fieldSize = field[2]
+			fieldName = item[0]
+			fieldType = item[1]
+			fieldSize = item[2]
 
 			# extract field from header using
 			# base + offset addressing
 			value = byteArr[base : base + fieldSize]
-			
-			fields[fieldName] = HeaderField(value, fieldType)
+
+			# convert value from bytes to int
+			field = fieldType.from_buffer(value).value
 
 			# update base
 			base += fieldSize
 
-		return Header(**fields)
+			# add field to header 
+			h.fields[fieldName] = field
+
+		return h
 
 	def __str__(self):
 		
 		strr = "{\n"
-		for key, item in self.fields.items():
-			strr += "     "
-			strr += key + ' : ' + str(item) + '\n'
+		for item in Header.FIELDS:
+			fieldName = item[0]
+			if fieldName in self.fields:
+				strr += "     "
+				strr += fieldName + ' : ' 
+				strr += str(self.fields[fieldName]) + '\n'
 		strr += "}"
 
 		return strr
-
-
-class HeaderField:
-	"""represents a single header field. Val is the value
-	of the field and len is the length of the field
-	in bytes.
-	"""
-
-	def __init__(self, val, ctype):
-		self.val = val
-		self.ctype = ctype
-
-	def pickle(self):
-		return self.ctype(self.val)
-
-	def __str__(self):
-		return str(self.val)
 
 class RxPException(Exception):
 	"""Exception that gives details on RxP related errors."""
