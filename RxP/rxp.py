@@ -2,6 +2,7 @@ import ctypes, socket, math, struct
 import logging
 from collections import OrderedDict
 from sys import getsizeof
+import random
 
 class Socket:
 	"""Socket contains all API methods needed
@@ -10,18 +11,18 @@ class Socket:
 	"""
 
 	# constructor
-	def __init__(self):
+	def __init__(self, timeout=0):
 
 		# create UDP socket
 		self._socket = socket.socket(
 			socket.AF_INET, socket.SOCK_DGRAM)
 
 		# timeout (milliseconds). 0 => no timeout
-		self.timeout = 0
+		self.timeout = timeout
 		# size of sender window (bytes)
-		self.sendWindow = 0
+		self.sendWindow = 1
 		# size of receiver window (bytes)
-		self.rcvWindow = 0
+		self.rcvWindow = Packet.MAX_WINDOW_SIZE
 		# connection status (see ConnectionStatus)
 		self.connStatus = ConnectionStatus.NO_CONN
 		# destination address (ipaddress, port)
@@ -42,7 +43,24 @@ class Socket:
 	@timeout.setter
 	def timeout(self, value):
 		self._socket.settimeout(value)
-	
+
+	# provides in order seq numbers
+	@property
+	def seqNum(self):
+	    return self._seqNum
+	@seqNum.setter
+	def seqNum(self, value):
+		self._seqNum = value
+	def nextSeqNum(self):
+		self._seqNum += 1
+		if self._seqNum > Packet.MAX_SEQ_NUM:
+			self.seqNum = 0
+		return self._seqNum
+	def newSeqNum(self):
+		self._seqNum = random.randint(
+			0, Packet.MAX_SEQ_NUM)
+		return self._seqNum
+
 	def bind(self, srcAddr):
 		"""binds socket to the given port. port is optional.
 		If no port is given, self.port is used. If self.port
@@ -68,6 +86,9 @@ class Socket:
 		sends back a SYN, ACK. The sender then
 		sends an ACK and the handshake is complete.
 		"""
+
+		# send SYN packet
+		seqNum = self.newSeqNum()
 
 
 	def listen(self):
@@ -102,34 +123,21 @@ class Packet:
 
 	# maximum sequence number
 	MAX_SEQ_NUM = math.pow(2, 32)
-	# maximum data size for one 
-	# packet (bytes)
-	MAX_DATA_LENGTH = math.pow(2, 16)
 	# max window size for sender
-	# or receiver (packets)
-	MAX_WINDOW_SIZE = math.pow(2, 16)
+	# or receiver (bytes)
+	MAX_WINDOW_SIZE = 65485
+	# Ethernet MTU (1500) - UDP header
+	DATA_LENGTH = 1492
 
 	def __init__(self, header=None, data=""):
-		self.data = data
-		self.header = header or Header()
 
-		if len(self.data) > Packet.MAX_DATA_LENGTH:
+		if len(data) > Packet.DATA_LENGTH:
+			# error if too much packet data is given
 			raise RxPException(msg="too much data")
-
-		if len(self.data) < Packet.MAX_DATA_LENGTH:
-			pass
-
-	def createFromMessage(msg):
-		"""creates an array of packets from a 
-		string message.
-		"""
-		pass
-
-	def createFromDatagram(dgram):
-		"""creates a single packet from a single
-		UDP datagram using pickling.
-		"""
-		pass
+		else:
+			self.data = data
+			self.header = header or Header()
+			self.header.fields["length"] = len(data)
 
 	def pickle(self):
 		""" returns a byte string representation
@@ -154,10 +162,34 @@ class Packet:
 
 		return p
 
+	def verifyChecksum(checksum):
+		return checksum == self.header.fields["checksum"]
+
+	# http://stackoverflow.com/a/1769267
+	@staticmethod
+	def _add(a, b):
+	    c = a + b
+	    return (c & 0xffff) + (c >> 16)
+
+	# http://stackoverflow.com/a/1769267
+	def _checksum(self):
+		self.header.fields["checksum"] = 0
+		p = self.pickle()
+
+		s = 0
+		for i in range(0, len(p), 2):
+		    w = ord(p[i]) + (ord(p[i+1]) << 8)
+		    s = _add(s, w)
+		s = ~s & 0xffff
+
+		self.header.fields["checksum"] = s
+
 	def __str__(self):
-		# TODO edit to print header data
-		d = self.___dict__ 
-		return str(d)
+		d = self.__dict__ 
+		d2 = {}
+		for key in d.keys():
+			d2[key] = str(d[key])
+		return str(d2)
 
 class Header:
 	"""Encapsulation of the header fields
