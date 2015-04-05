@@ -24,8 +24,9 @@ class FxA:
 		self.running = True
 
 		self.ithread = threading.Thread(target = self.userinput)
-		ithread.start()
+		self.ithread.start()
 	def userinput(self):
 		while self.running:
 			uinput = input(">>>")
 			self.queue.put(str(uinput))
+
