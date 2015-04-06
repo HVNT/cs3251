@@ -6,11 +6,13 @@ import logging
 
 def main():
 	test.testBind()
-	test.testPacketAttributes()
-	test.testHeader()
-	test.testPacket()
+	test.testPacketAttributesPickle()
+	test.testHeaderPickle()
+	test.testPacketPickle()
+	test.testPacketChecksum()
+	test.testSocketConnect()
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 main()
 

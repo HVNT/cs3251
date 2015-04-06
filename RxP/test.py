@@ -1,14 +1,22 @@
 from rxp import *
 import ctypes
+import threading
+import time
 
-# lambda used to reduce
-# arrays of assertions
-r = lambda x,y: x and y
+def assert_(result):
+	if isinstance(result, bool):
+		success = result
+	else:
+		success = reduce(lambda x,y: x and y, 
+			result)
+
+	logging.info("success" if success else "failure")
+	assert success
 
 def testBind(port=8764):
 	"""Tests socket.bind()"""
 
-	logging.info("testing Socket.bind()")
+	logging.info("testBind...")
 	assertions = [False, False]
 
 	s1 = Socket()
@@ -28,14 +36,12 @@ def testBind(port=8764):
 	except Exception, e:
 		assertions[1] = True
 
-	success = reduce(r, assertions)
-	logging.info("success" if success else "failure")
-	assert success
+	assert_(assertions)
 
-def testPacketAttributes(attrs=None):
+def testPacketAttributesPickle(attrs=None):
 	"""tests PacketAttributes class"""
 
-	logging.info("testing PacketAttributes")
+	logging.info("testPacketAttributesPickle...")
 
 	if attrs is None:
 		attrs = ('SYN', 'ACK')
@@ -52,14 +58,12 @@ def testPacketAttributes(attrs=None):
 	for index, item in enumerate(attrs):
 		assertions.append(item == attrs2[index])
 
-	success = reduce(r, assertions)
-	logging.info("success" if success else "failure")
-	assert success
+	assert_(assertions)
 
-def testHeader(fields=None):
+def testHeaderPickle(fields=None):
 	""""tests Header class"""
 
-	logging.info("testing Header")
+	logging.info("testHeaderPickle...")
 
 	if fields is None:
 		attrs = PacketAttributes.pickle(('SYN', 'ACK'))
@@ -87,23 +91,19 @@ def testHeader(fields=None):
 		val2 = h2.fields[fieldName]
 		assertions.append(val1 == val2)
 
-	success = reduce(r, assertions)
-	logging.info("success" if success else "failure")
-	assert success
+	assert_(assertions)
 
-def testPacket(header=None, data="Hello World!"):
+def testPacketPickle(header=None, data="Hello World!"):
 	"""tests the Packet class"""
 
-	logging.info("testing Packet")
+	logging.info("testPacketPickle...")
 
 	if header is None:
 		header = Header(
-			srcPort=8080,
-			destPort=8081,
-			seqNum=12345,
-			rcvWindow=4096,
-			checksum=123,
-			attrs=17
+			
+
+
+
 			)
 	
 	p1 = Packet(header, data)
@@ -122,14 +122,60 @@ def testPacket(header=None, data="Hello World!"):
 
 	assertions.append(p1.data == p2.data)
 
-	success = reduce(r, assertions)
-	logging.info("success" if success else "failure")
-	assert success
+	assert_(assertions)
 
+def testPacketChecksum(p=None):
 
+	logging.info('testPacketChecksum...')
 
+	if p is None:
+		attrs = PacketAttributes.pickle(("SYN",))
+		header = Header(
+			srcPort=8080,
+			destPort=8081,
+			seqNum=123,
+			rcvWindow=4096,
+			attrs=attrs
+			)
 
+	p1 = Packet(header)
+	p2 = Packet.unpickle(p1.pickle())
 
-		
+	logging.debug("chksum1: " + str(p1.header.fields["checksum"]))
+	logging.debug("chksum2: " + str(p2.header.fields["checksum"]))
 
-	
+	assert_(p2.verify())
+
+def testSocketConnect():
+
+	logging.info('testSocketConnect...')
+
+	def runserver(server):
+		try:
+			server.listen()
+			server.accept()
+		except Exception, e:
+			logging.debug(e)
+
+	client = Socket()
+	client.bind(('127.0.0.1', 8080))
+	client.timeout = 3.0
+
+	server = Socket()
+	server.bind(('127.0.0.1', 8081))
+	server.timeout = 3.0
+
+	serverThread = threading.Thread(
+		target=runserver, args=(server,))
+	serverThread.setDaemon(True)
+	serverThread.start()
+
+	client.connect(server.srcAddr)
+	logging.debug("client")
+	logging.debug("ack: " + str(client.ackNum))
+	logging.debug("seq: " + str(client.seqNum))
+
+	serverThread.join()
+	logging.debug("server:")
+	logging.debug("ack: " + str(server.ackNum))
+	logging.debug("seq: " + str(server.seqNum))

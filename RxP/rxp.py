@@ -11,14 +11,14 @@ class Socket:
 	"""
 
 	# constructor
-	def __init__(self, timeout=0):
+	def __init__(self):
 
 		# create UDP socket
 		self._socket = socket.socket(
 			socket.AF_INET, socket.SOCK_DGRAM)
 
 		# timeout (milliseconds). 0 => no timeout
-		self.timeout = timeout
+		self.timeout = 0
 		# size of sender window (bytes)
 		self.sendWindow = 1
 		# size of receiver window (bytes)
@@ -29,6 +29,10 @@ class Socket:
 		self.destAddr = ("", 0)
 		# source port
 		self.srcAddr = ("", 0)
+		# seqNum
+		self.seqNum = WrapableNum(max=Packet.MAX_SEQ_NUM)
+		# ackNum
+		self.ackNum = WrapableNum(max=Packet.MAX_SEQ_NUM)
 
 	def __del__(self):
 		# close connection if 
@@ -58,10 +62,29 @@ class Socket:
 			try:
 				self._socket.bind(srcAddr)
 			except Exception, e:
-				logging.warning("error binding: " + \
+				logging.debug("error binding: " + \
 					repr(self.srcAddr) + \
 					" already in use") 
 				raise e
+
+	def listen(self):
+		"""listens on the given port number for 
+		packets. Blocks until a SYN packet is received.
+		"""
+
+		while True:
+			# wait to receive SYN
+			data, addr = self._socket.recvfrom(self.rcvWindow)
+			packet = self._packet(data)
+			if packet.checkAttrs(("SYN",)):
+				break
+
+		# set ackNum 
+		ackNum = packet.header.fields["seqNum"]
+		self.ackNum.reset(ackNum+1)
+
+		# set dest addr
+		self.destAddr = addr
 
 	def connect(self, destAddr):
 		"""connects to destAddr given in format
@@ -71,22 +94,81 @@ class Socket:
 		sends an ACK and the handshake is complete.
 		"""
 
-		# send SYN packet
-		seqNum = self.seqNum()
+		# set dest addr
+		self.destAddr = destAddr
+
+		# set initial sequence number for
+		# new connection
+		initial = random.randint(0, Packet.MAX_SEQ_NUM)
+		self.seqNum.reset(initial)
+
+		# send SYN packet with sequence number
+		attrs = PacketAttributes.pickle(("SYN",))
+		header = Header(
+			srcPort=self.srcAddr[1],
+			destPort=self.destAddr[1],
+			seqNum=self.seqNum.next(),
+			rcvWindow=self.rcvWindow,
+			attrs=attrs
+			)
+		packet = Packet(header)
+		self._socket.sendto(packet.pickle(), self.destAddr)
+
+		# receive SYN, ACK and set ack num
+		data, addr = self._socket.recvfrom(self.rcvWindow)
+		packet = self._packet(data, addr)
+		if not packet.checkAttrs(("SYN", "ACK")):
+			raise RxPException(RxPException.UNEXPECTED_PACKET)
+
+		# set ackNum
+		ackNum = packet.header.fields["seqNum"]
+		self.ackNum.reset(ackNum+1)
+
+		# send ACK, change connection status
+		attrs = PacketAttributes.pickle(("ACK",))
+		header = Header(
+			srcPort=self.srcAddr[1],
+			destPort=self.destAddr[1],
+			seqNum=self.seqNum.next(),
+			rcvWindow=self.rcvWindow,
+			attrs=attrs
+			)
+		packet = Packet(header)
+		self._socket.sendto(packet.pickle(), self.destAddr)
+		self.connStatus = ConnectionStatus.IDLE
 
 
-	def listen(self):
-		"""listens on the given port number for 
-		packets. Blocks until a SYN packet is received.
-		"""
-		pass
 
 	def accept(self):
 		"""accepts an incoming connection. Implements
 		the receiver side of the handshake. returns
 		the sender's address.
 		"""
-		pass
+
+		# set initial sequence number for
+		# new connection
+		initial = random.randint(0, Packet.MAX_SEQ_NUM)
+		self.seqNum.reset(initial)
+
+		# send SYN, ACK with sequence number
+		attrs = PacketAttributes.pickle(("SYN","ACK"))
+		header = Header(
+			srcPort=self.srcAddr[1],
+			destPort=self.destAddr[1],
+			seqNum=self.seqNum.next(),
+			rcvWindow=self.rcvWindow,
+			attrs=attrs
+			)
+		packet = Packet(header)
+		self._socket.sendto(packet.pickle(), self.destAddr)
+
+		# receive ACK and change conn status
+		data, addr = self._socket.recvfrom(self.rcvWindow)
+		packet = self._packet(data, addr)
+		if not packet.checkAttrs(("ACK",)):
+			raise RxPException(RxPException.UNEXPECTED_PACKET)
+		self.connStatus = ConnectionStatus.IDLE
+
 
 	def send(self, msg):
 		"""sends a message"""
@@ -98,7 +180,38 @@ class Socket:
 
 	def close(self):
 		"""closes the connection and unbinds the port"""
-		pass
+		self._socket.close()
+
+	def _packet(self, data, addr=None):
+		""" reconstructs a packet from data and verifies
+		checksum and address (if addr is not None).
+		"""
+
+		packet = Packet.unpickle(data)
+
+		# verify addr
+		if addr is not None and addr != self.destAddr:
+			raise RxPException(RxPException.OUTSIDE_PACKET)
+
+		# verify checksum
+		if not packet.verify():
+			raise RxPException(RxPException.INVALID_CHECKSUM)
+
+		# verify seqnum
+		attrs = PacketAttributes.unpickle(
+			packet.header.fields["attrs"])
+		isSYN = "SYN" in attrs
+		packetSeqNum = packet.header.fields["seqNum"]
+		socketAckNum = self.ackNum.num
+		if (not isSYN and packetSeqNum > 0 and 
+			socketAckNum != packetSeqNum):
+			logging.debug(str(socketAckNum) + \
+			 ', ' + str(packetSeqNum))
+			raise RxPException(RxPException.SEQ_MISMATCH)
+		else:
+			self.ackNum.next()
+
+		return packet
 
 class Packet:
 	"""Represents a single packet and includes
@@ -122,6 +235,8 @@ class Packet:
 			self.data = data
 			self.header = header or Header()
 			self.header.fields["length"] = len(data)
+			self.header.fields["checksum"] = self._checksum()
+
 
 	def pickle(self):
 		""" returns a byte string representation
@@ -146,9 +261,6 @@ class Packet:
 
 		return p
 
-	def verifyChecksum(checksum):
-		return checksum == self.header.fields["checksum"]
-
 	# http://stackoverflow.com/a/1769267
 	@staticmethod
 	def _add(a, b):
@@ -158,15 +270,38 @@ class Packet:
 	# http://stackoverflow.com/a/1769267
 	def _checksum(self):
 		self.header.fields["checksum"] = 0
-		p = self.pickle()
+		p = str(self.pickle())
 
 		s = 0
 		for i in range(0, len(p), 2):
 		    w = ord(p[i]) + (ord(p[i+1]) << 8)
-		    s = _add(s, w)
+		    s = Packet._add(s, w)
 		s = ~s & 0xffff
 
-		self.header.fields["checksum"] = s
+		return s
+
+	def verify(self):
+		# compare packet checksum with
+		# calculated checksum
+		packetChksum = self.header.fields["checksum"]
+		calcChksum = self._checksum()
+
+		return packetChksum == calcChksum
+
+	def checkAttrs(self, expectedAttrs):
+		# verify expected attrs
+		attrs = PacketAttributes.unpickle(
+			self.header.fields["attrs"])
+
+		if len(attrs) != len(expectedAttrs):
+			return False
+		else:
+			for attr in expectedAttrs:
+				if (attr is not None and 
+					attr not in attrs):
+					return False
+		return True
+			
 
 	def __str__(self):
 		d = self.__dict__ 
@@ -239,6 +374,11 @@ class Header:
 		about the order and size of each field.
 		"""
 
+		# ensure the byte array is of
+		# type bytearray
+		if not isinstance(byteArr, bytearray):
+			byteArr = bytearray(byteArr)
+
 		h = Header()
 		base = 0
 		for item in Header.FIELDS:
@@ -264,37 +404,62 @@ class Header:
 
 	def __str__(self):
 		
-		strr = "{\n"
+		str_ = "{ "
 		for item in Header.FIELDS:
 			fieldName = item[0]
 			if fieldName in self.fields:
-				strr += "     "
-				strr += fieldName + ' : ' 
-				strr += str(self.fields[fieldName]) + '\n'
-		strr += "}"
+				str_ += fieldName + ': ' 
+				str_ += str(self.fields[fieldName]) + ', '
+		str_ += " }"
 
-		return strr
+		return str_
 
 class RxPException(Exception):
 	"""Exception that gives details on RxP related errors."""
 
-	def __init__(self, msg, innerException):
-		self.msg = msg
-		self.innerException = innerException
-    
+	# exception types
+
+	# checksums do not match
+	INVALID_CHECKSUM = 1
+	# packet sent from outside
+	# connection
+	OUTSIDE_PACKET = 2
+	# connection timed out
+	CONNECTION_TIMEOUT = 3
+	# packet type not expected
+	# SYN, ACK, etc
+	UNEXPECTED_PACKET = 4
+	# mismatch between packet seq
+	# num and expected seq num
+	SEQ_MISMATCH = 5
+
+	DEFAULT_MSG = {
+		INVALID_CHECKSUM: "invalid checksum",
+		OUTSIDE_PACKET: "outside packet",
+		CONNECTION_TIMEOUT: "connection timeout",
+		UNEXPECTED_PACKET: "unexpected packet type",
+		SEQ_MISMATCH: "sequence mismatch"
+	}
+
+	def __init__(self, type_, msg=None, innerException=None):
+		self.type = type_
+		self.inner = innerException
+		if msg is None:
+			self.msg = RxPException.DEFAULT_MSG[type_]
+		else:
+			self.msg = msg
+
 	def __str__(self):
-		str = self.msg + "\n"
-		str += repr(self.innerException)
-		return str
+		return self.msg
 
 class ConnectionStatus:
 	"""enum that describes the status 
 	of a connection
 	"""
-	NO_CONN = 1
-	IDLE = 2
-	SENDING = 3
-	RECEVING = 4
+	NO_CONN = "no_conn"
+	IDLE = "idle"
+	SENDING = "sending"
+	RECEVING = "receiving"
 
 class PacketAttributes:
 	"""class that generates the bit string that describes
@@ -323,7 +488,13 @@ class PacketAttributes:
 			pos += 1
 
 		# generate binary from array
-		return reduce(lambda x,y: x | y, attrList)
+		if len(attrList) > 1:
+			byteStr = reduce(lambda x,y: x | y, 
+				attrList)
+		else:
+			byteStr = attrList[0]
+		
+		return byteStr
 
 	@staticmethod
 	def unpickle(byteStr):
@@ -339,7 +510,7 @@ class PacketAttributes:
 				attrs.append(item)
 			pos += 1
 
-		return attrs
+		return tuple(attrs)
 
 	def __str__(self):
 		return repr(self.attrs)
@@ -350,20 +521,22 @@ class WrapableNum:
 	zero.
 	"""
 
-	def __init__(self, step=1, max=0):
+	def __init__(self, initial=0, step=1, max=0):
 		self.max = max
 		self.step = step
-		self.num = 0
+		self.num = initial
 
-	@property
-	def num(self):
-	    # get num and increment
-		num = self._num
-		self._num += self.step
+	def reset(self, value):
+		self.num = value
+
+	def next(self):
+		# get num and increment
+		num = self.num
+		self.num += self.step
 		# wrap around if max has been reached
-		if self._num > self.max:
-			self._num = 0
-		return num
-	@num.setter
-	def num(self, value):
-		self._num = value	
+		if self.num > self.max:
+			self.num = 0
+		return num	
+
+	def __str__(self):
+		return str(self.num)
