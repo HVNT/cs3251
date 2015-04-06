@@ -36,7 +36,6 @@ class FxA:
 		self.ithread = threading.Thread(target = self.userinput)
 		self.ithread.start()
 		self.ithread.daemon = True
-		self.setupSocket(self.port, self.ip, self.destport)
 		while self.running:
 			uin = self.iqueue.get()
 			if(len(uin) > 0 and len(uin.split(' ')) > 0):
@@ -59,10 +58,10 @@ class FxA:
 			if(self.server): 
 				self.runserver()
 
-	def setupSocket(self, port, ip, destport):
+	def setupSocket(self):
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		#self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		self.socket.bind((ip, port))
+		self.socket.bind((self.ip, self.port))
 
 
 	def userinput(self):
@@ -80,6 +79,7 @@ class FxA:
 		if(self.connected):
 			return
 		try:
+			self.setupSocket()
 			print "connecting"
 			self.socket.connect((self.ip, self.destport))
 			print "connected"
@@ -89,29 +89,71 @@ class FxA:
 			self.connected = False
 
 	def disconnect(self):
+		self.socket.send("CLOSE:DONE")
 		self.socket.close()
 		self.connected = False
 
 	def get(self, F):
 		self.socket.send("GET:"+F)
-		size = self.socket.recv(32) #receive the number of packets
-		print "Size:" + size + str(type(size))
-		frecvd = self.socket.recv(int(size))
-		print frecvd + str(type(frecvd))
-		f = open("1" + F, 'w+')
-		f.write(frecvd)
+		resp = self.socket.recv(32) #receive the number of packets
+		if(resp.split(':')[0] == "ERR"):
+			print "File not found on server"
+			return
+		elif(resp.split(':')[0] == "SND"):
+			size = int(resp.split(':')[1])
+
+		print "Size:" + str(size)
+
+		filename = "new " + F
+
+		#Set the file to be empty
+		f = open(filename, 'w+')
+		f.write("")
+		f.close()
+
+		f = open(filename, 'a+')
+
+		recvd = 0
+		size = int(size)
+		while(recvd < size):
+			if(size - recvd < 1024):
+				temp = self.socket.recv(size-recvd)
+			else:
+				temp = self.socket.recv(1024)
+			recvd+=1024
+			f.write(temp)
+
 		f.close()
 		
 	def post(self, F):
-		f = open(F)
+		self.socket.send("POST:"+F)
+		resp = self.socket.recv(1024)
+
+		try:
+			f = open(F)
+		except IOError:
+			print "File error.." 
+			self.socket.send("ERR:File error")
+			return
+
 		fdata = f.read()
-		self.socket.send("POST:"+len(fdata.encode('utf-8')))
-		self.socket.send(fdata)
+		a = array("B", fdata)
+
+		self.socket.send("SND:" + str(len(a)))
+		sent = 0
+		while(sent < len(a)):
+			if(len(a) - sent < 1024):
+				self.socket.send(a[sent:len(a)])
+			else:
+				self.socket.send(a[sent:sent+1024])
+			sent+=1024
+		f.close()
 
 	def runserver(self):
 		#self.socket.timeout = 1000
 		print "running" + str(self.connected)
 		if(not self.connected):
+			self.setupSocket()
 			print "listening"
 			self.socket.listen(MAX_QUEUE_CONNECTIONS)
 			print "accepting"
@@ -123,18 +165,25 @@ class FxA:
 		recvd = recvd.split(':')
 		if(len(recvd)>1 and recvd[0] == "GET"):
 			filename = recvd[1]
-			f = open(filename)
+			
+			try:
+				f = open(filename)
+			except IOError:
+				print "File error.." 
+				self.socket.send("ERR:File error")
+				return
+
 			fdata = f.read()
 			a = array("B", fdata)
-			print "length: " + str(len(a))
-			#print "length: " + str(len(fdata.encode('utf-8')))
 
-			#self.socket.send(str(len(fdata.encode('utf-8'))))
-			self.socket.send(str(len(a)))
+			self.socket.send("SND:" + str(len(a)))
 			sent = 0
 			while(sent < len(a)):
-				self.socket.send(a)
-
+				if(len(a) - sent < 1024):
+					self.socket.send(a[sent:len(a)])
+				else:
+					self.socket.send(a[sent:sent+1024])
+				sent+=1024
 			f.close()
 
 		if(len(recvd)>1 and recvd[0] == "POST"):
@@ -146,7 +195,12 @@ class FxA:
 			#recv shitt
 			f.close()
 
+		if(len(recvd)>1 and recvd[0] == "CLOSE"):
+			self.socket.close()
+			self.connected = False
+
 	def terminate(self):
+		self.socket.send("CLOSE:DONE")
 		self.socket.close()
 		self.running = False
 
