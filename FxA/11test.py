@@ -2,7 +2,6 @@ import Queue
 import threading
 import sys
 import socket
-from array import array
 # import argparse
 
 # parser = argparse.ArgumentParser(description='Transfer files.')
@@ -18,8 +17,6 @@ from array import array
 # args = parser.parse_args()
 
 MAX_QUEUE_CONNECTIONS = 3
-reload(sys)
-sys.setdefaultencoding('utf-8')
 
 class FxA:
 	def __init__(self, X, A, P):
@@ -35,7 +32,6 @@ class FxA:
 	def run(self):
 		self.ithread = threading.Thread(target = self.userinput)
 		self.ithread.start()
-		self.ithread.daemon = True
 		self.setupSocket(self.port, self.ip, self.destport)
 		while self.running:
 			uin = self.iqueue.get()
@@ -61,9 +57,7 @@ class FxA:
 
 	def setupSocket(self, port, ip, destport):
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		#self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.socket.bind((ip, port))
-
 
 	def userinput(self):
 		i = 0
@@ -96,28 +90,25 @@ class FxA:
 		self.socket.send("GET:"+F)
 		size = self.socket.recv(32) #receive the number of packets
 		print "Size:" + size + str(type(size))
-		frecvd = self.socket.recv(int(size))
-		print frecvd + str(type(frecvd))
-		f = open("1" + F, 'w+')
+		frecvd = self.socket.recv(size)
+		f = open(F)
 		f.write(frecvd)
 		f.close()
 		
 	def post(self, F):
 		f = open(F)
-		fdata = f.read()
-		self.socket.send("POST:"+len(fdata.encode('utf-8')))
-		self.socket.send(fdata)
+		fdata = f.read(frecvd)
+		self.socket.send("POST:"+F)
 
 	def runserver(self):
 		#self.socket.timeout = 1000
-		print "running" + str(self.connected)
+		print "running"
 		if(not self.connected):
 			print "listening"
 			self.socket.listen(MAX_QUEUE_CONNECTIONS)
 			print "accepting"
 			(self.socket, addr) = self.socket.accept()
 			print "accepted"
-			self.connected = True
 		recvd = self.socket.recv(1024)
 		print "received:" + recvd
 		recvd = recvd.split(':')
@@ -125,15 +116,13 @@ class FxA:
 			filename = recvd[1]
 			f = open(filename)
 			fdata = f.read()
-			a = array("B", fdata)
-			print "length: " + str(len(a))
-			#print "length: " + str(len(fdata.encode('utf-8')))
 
-			#self.socket.send(str(len(fdata.encode('utf-8'))))
-			self.socket.send(str(len(a)))
-			sent = 0
-			while(sent < len(a)):
-				self.socket.send(a)
+			print "length: " + str(len(fdata))
+			#print "size:" + str(sys.getsizeof(fdata))
+			print fdata
+			#send shittt
+			self.socket.send(sys.getsizeof(fdata))
+			self.socket.send(fdata)
 
 			f.close()
 
@@ -145,7 +134,6 @@ class FxA:
 			print "size:" + sys.getsizeof(fdata)
 			#recv shitt
 			f.close()
-
 	def terminate(self):
 		self.socket.close()
 		self.running = False
@@ -155,8 +143,6 @@ class FxA:
 		#self.socket.sendWindow = W
 
 def main():
-	reload(sys)
-	sys.setdefaultencoding('utf-8')
 
 	if(len(sys.argv)!=4):
 		print "Unexpected number of arguements (" + str(len(sys.argv)-1) + ")"
