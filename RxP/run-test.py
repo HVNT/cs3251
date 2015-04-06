@@ -10,7 +10,7 @@ def main():
 	test.testHeader()
 	test.testPacket()
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 main()
 

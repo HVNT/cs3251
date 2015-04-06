@@ -44,22 +44,6 @@ class Socket:
 	def timeout(self, value):
 		self._socket.settimeout(value)
 
-	# provides in order seq numbers
-	@property
-	def seqNum(self):
-	    return self._seqNum
-	@seqNum.setter
-	def seqNum(self, value):
-		self._seqNum = value
-	def nextSeqNum(self):
-		self._seqNum += 1
-		if self._seqNum > Packet.MAX_SEQ_NUM:
-			self.seqNum = 0
-		return self._seqNum
-	def newSeqNum(self):
-		self._seqNum = random.randint(
-			0, Packet.MAX_SEQ_NUM)
-		return self._seqNum
 
 	def bind(self, srcAddr):
 		"""binds socket to the given port. port is optional.
@@ -88,7 +72,7 @@ class Socket:
 		"""
 
 		# send SYN packet
-		seqNum = self.newSeqNum()
+		seqNum = self.seqNum()
 
 
 	def listen(self):
