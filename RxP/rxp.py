@@ -80,7 +80,7 @@ class Socket:
 		while True:
 			# wait to receive SYN
 			try:
-				data, addr = self._socket.recvfrom(self.rcvWindow)
+				data, addr = self.recvfrom(self.rcvWindow)
 				packet = self._packet(data, checkSeq=False)
 				if packet.checkAttrs(("SYN",), exclusive=True):
 					break
@@ -126,10 +126,10 @@ class Socket:
 			attrs=attrs
 			)
 		packet = Packet(header)
-		self._socket.sendto(packet.pickle(), self.destAddr)
+		self.sendto(packet, self.destAddr)
 
 		# receive SYN, ACK and set ack num
-		data, addr = self._socket.recvfrom(self.rcvWindow)
+		data, addr = self.recvfrom(self.rcvWindow)
 		packet = self._packet(data, addr, checkSeq=False)
 		if not packet.checkAttrs(("SYN", "ACK")):
 			raise RxPException(RxPException.UNEXPECTED_PACKET)
@@ -148,7 +148,7 @@ class Socket:
 			attrs=attrs
 			)
 		packet = Packet(header)
-		self._socket.sendto(packet.pickle(), self.destAddr)
+		self.sendto(packet, self.destAddr)
 		self.connStatus = ConnectionStatus.IDLE
 
 	def accept(self):
@@ -178,11 +178,10 @@ class Socket:
 			attrs=attrs
 			)
 		packet = Packet(header)
-		self._socket.sendto(
-			packet.pickle(), self.destAddr)
+		self.sendto(packet, self.destAddr)
 
 		# receive ACK and change conn status
-		data, addr = self._socket.recvfrom(self.rcvWindow)
+		data, addr = self.recvfrom(self.rcvWindow)
 		packet = self._packet(data, addr)
 		if not packet.checkAttrs(("ACK",)):
 			logging.debug(packet)
@@ -238,8 +237,7 @@ class Socket:
 			packet = packetQ.popleft()
 
 			# send a packet
-			self._socket.sendto(
-				packet.pickle(), self.destAddr)
+			self.sendto(packet, self.destAddr)
 
 			logging.debug("client packet: " + str(packet))
 
@@ -250,13 +248,13 @@ class Socket:
 			raise RxPException("Socket not bound")
 		
 		# listen for data
-		data, addr = self._socket.recvfrom(self.rcvWindow)
+		data, addr = self.recvfrom(self.rcvWindow)
 		packet = self._packet(data)
 
 		logging.debug("server packet: " + str(packet))
 
 		# decode and receive message
-		message = ""
+		message = packet.data
 		eom = False
 
 		if packet.checkAttrs(("NM",)):
@@ -267,7 +265,7 @@ class Socket:
 				message += packet.data
 
 				# get next packet
-				data, addr = self._socket.recvfrom(
+				data, addr = self.recvfrom(
 					self.rcvWindow)
 				packet = self._packet(data)
 			else:
@@ -311,6 +309,26 @@ class Socket:
 				self.ack.next()
 
 		return packet
+
+	def sendto(self, packet, addr):
+		logging.debug("sendto: " + str(packet))
+		self._socket.sendto(packet.pickle(), addr)
+
+	def recvfrom(self, rcvWindow):
+		while True:
+			try:
+				data, addr = self._socket.recvfrom(self.rcvWindow)
+				break
+			except socket.error as e:
+				if e.errno == 35:
+					continue
+				else:
+					raise e
+
+		logging.debug("recvfrom: " + str(Packet.unpickle(data)))
+		return (data, addr)
+
+
 
 class Packet:
 	"""Represents a single packet and includes

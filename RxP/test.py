@@ -270,7 +270,7 @@ def testSocketTimeout():
 	expectTimeout(server.listen)
 
 	# test connecting with no response
-	expectTimeout(client.connect, ("127.0.0.1", 8082))
+	expectTimeout(client.connect, ("127.0.0.1", 8081))
 
 	# run server and connect
 	serverThread.start()
