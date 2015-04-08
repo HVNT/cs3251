@@ -4,7 +4,7 @@ import sys
 import socket
 
 MAX_QUEUE_CONNECTIONS = 3
-DEBUG_MODE = False
+DEBUG_MODE = True
 lock = threading.Lock()
 cond = threading.Condition(lock)
 blocking = False
@@ -230,7 +230,7 @@ class FxA:
 					print("accepting")
 				self.accepting = True
 			try:
-				self.socket.settimeout(1.0)
+				self.socket.timeout = 1000
 				(self.socket, addr) = self.socket.accept()
 			except socket.timeout:
 				return	
@@ -242,7 +242,7 @@ class FxA:
 		if(DEBUG_MODE):
 			print("receiving..")
 		try:
-			self.socket.settimeout(1.0)
+			self.socket.timeout = 1000
 			recvd = self.socket.recv(1024)
 		except socket.timeout:
 			return	
