@@ -2,6 +2,7 @@ from rxp import *
 import ctypes
 import threading
 import time
+from functools import reduce
 
 def assert_(result):
 	if isinstance(result, bool):
@@ -26,14 +27,14 @@ def testBind(port=8764):
 	try:
 		s1.bind(('127.0.0.1', port))
 		assertions[0] = True 
-	except Exception, e:
+	except Exception:
 		assertions[0] = False
 
 	# test binding to a port that is in use
 	try:
 		s2.bind(('127.0.0.1', port))
 		assertions[1] = False
-	except Exception, e:
+	except Exception:
 		assertions[1] = True
 
 	assert_(assertions)
@@ -47,10 +48,10 @@ def testPacketAttributesPickle(attrs=None):
 		attrs = ('SYN', 'ACK')
 
 	attrsP = PacketAttributes.pickle(attrs)
- 	attrs2 = PacketAttributes.unpickle(attrsP)
+	attrs2 = PacketAttributes.unpickle(attrsP)
  	
 	logging.debug(attrs)
- 	logging.debug(attrs2)
+	logging.debug(attrs2)
 
 	assert len(attrs) == len(attrs2)
 
@@ -70,8 +71,8 @@ def testHeaderPickle(fields=None):
 		fields = {
 			"srcPort" : 8080,
 			"destPort" : 8081,
-			"seqNum" : 12345,
-			"ackNum" : 12346,
+			"seq" : 12345,
+			"ack" : 12346,
 			"rcvWindow" : 4096,
 			"length" : 4096,
 			"checksum" : 123,
@@ -133,7 +134,7 @@ def testPacketChecksum(p=None):
 		header = Header(
 			srcPort=8080,
 			destPort=8081,
-			seqNum=123,
+			seq=123,
 			rcvWindow=4096,
 			attrs=attrs
 			)
@@ -154,7 +155,7 @@ def testSocketConnect():
 		try:
 			server.listen()
 			server.accept()
-		except Exception, e:
+		except Exception as e:
 			logging.debug(e)
 
 	client = Socket()
@@ -172,10 +173,40 @@ def testSocketConnect():
 
 	client.connect(server.srcAddr)
 	logging.debug("client")
-	logging.debug("ack: " + str(client.ackNum))
-	logging.debug("seq: " + str(client.seqNum))
+	logging.debug("ack: " + str(client.ack.num))
+	logging.debug("seq: " + str(client.seq.num))
 
 	serverThread.join()
 	logging.debug("server:")
-	logging.debug("ack: " + str(server.ackNum))
-	logging.debug("seq: " + str(server.seqNum))
+	logging.debug("ack: " + str(server.ack.num))
+	logging.debug("seq: " + str(server.seq.num))
+
+	assertions = []
+
+	assertions.append(client.connStatus == ConnectionStatus.IDLE)
+	assertions.append(server.connStatus == ConnectionStatus.IDLE)
+	assertions.append(client.ack.num == server.seq.num)
+	assertions.append(client.seq.num == server.ack.num)
+
+	assert_(assertions)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -3,6 +3,7 @@ import logging
 from collections import OrderedDict
 from sys import getsizeof
 import random
+from functools import reduce
 
 class Socket:
 	"""Socket contains all API methods needed
@@ -29,10 +30,10 @@ class Socket:
 		self.destAddr = ("", 0)
 		# source port
 		self.srcAddr = ("", 0)
-		# seqNum
-		self.seqNum = WrapableNum(max=Packet.MAX_SEQ_NUM)
-		# ackNum
-		self.ackNum = WrapableNum(max=Packet.MAX_SEQ_NUM)
+		# seq.num
+		self.seq = WrapableNum(max=Packet.MAX_SEQ_NUM)
+		# ack.num
+		self.ack = WrapableNum(max=Packet.MAX_SEQ_NUM)
 
 	def __del__(self):
 		# close connection if 
@@ -61,7 +62,7 @@ class Socket:
 		if self.srcAddr:
 			try:
 				self._socket.bind(srcAddr)
-			except Exception, e:
+			except Exception as e:
 				logging.debug("error binding: " + \
 					repr(self.srcAddr) + \
 					" already in use") 
@@ -79,9 +80,9 @@ class Socket:
 			if packet.checkAttrs(("SYN",)):
 				break
 
-		# set ackNum 
-		ackNum = packet.header.fields["seqNum"]
-		self.ackNum.reset(ackNum+1)
+		# set ack.num 
+		ackNum = packet.header.fields["seq"]
+		self.ack.reset(ackNum+1)
 
 		# set dest addr
 		self.destAddr = addr
@@ -100,14 +101,14 @@ class Socket:
 		# set initial sequence number for
 		# new connection
 		initial = random.randint(0, Packet.MAX_SEQ_NUM)
-		self.seqNum.reset(initial)
+		self.seq.reset(initial)
 
 		# send SYN packet with sequence number
 		attrs = PacketAttributes.pickle(("SYN",))
 		header = Header(
 			srcPort=self.srcAddr[1],
 			destPort=self.destAddr[1],
-			seqNum=self.seqNum.next(),
+			seq=self.seq.next(),
 			rcvWindow=self.rcvWindow,
 			attrs=attrs
 			)
@@ -120,16 +121,16 @@ class Socket:
 		if not packet.checkAttrs(("SYN", "ACK")):
 			raise RxPException(RxPException.UNEXPECTED_PACKET)
 
-		# set ackNum
-		ackNum = packet.header.fields["seqNum"]
-		self.ackNum.reset(ackNum+1)
+		# set ack.num
+		ackNum = packet.header.fields["seq"]
+		self.ack.reset(ackNum+1)
 
 		# send ACK, change connection status
 		attrs = PacketAttributes.pickle(("ACK",))
 		header = Header(
 			srcPort=self.srcAddr[1],
 			destPort=self.destAddr[1],
-			seqNum=self.seqNum.next(),
+			seq=self.seq.next(),
 			rcvWindow=self.rcvWindow,
 			attrs=attrs
 			)
@@ -148,14 +149,14 @@ class Socket:
 		# set initial sequence number for
 		# new connection
 		initial = random.randint(0, Packet.MAX_SEQ_NUM)
-		self.seqNum.reset(initial)
+		self.seq.reset(initial)
 
 		# send SYN, ACK with sequence number
 		attrs = PacketAttributes.pickle(("SYN","ACK"))
 		header = Header(
 			srcPort=self.srcAddr[1],
 			destPort=self.destAddr[1],
-			seqNum=self.seqNum.next(),
+			seq=self.seq.next(),
 			rcvWindow=self.rcvWindow,
 			attrs=attrs
 			)
@@ -172,7 +173,30 @@ class Socket:
 
 	def send(self, msg):
 		"""sends a message"""
-		pass
+		
+		# break msg into increments
+		packetList = list()
+
+		while i < len(msg):
+			 # extract data
+			if i+Packet.DATA_LENGTH > len(msg):
+				data = msg[i:]
+			else:	
+				data = msg[i:i+Packet.DATA_LENGTH]
+
+			# create packet
+			attrs = PacketAttributes.pickle(())
+			header = Header(
+				srcPort=self.srcAddr[1],
+				destPort=self.destAddr[1],
+				seq=self.seq.next(),
+				rcvWindow=self.rcvWindow,
+				attrs=attrs
+				)
+			packet = Packet(header, data)
+
+			# increment pointer
+			i += Packet.DATA_LENGTH
 
 	def rcv(self):
 		"""receives data"""
@@ -201,15 +225,15 @@ class Socket:
 		attrs = PacketAttributes.unpickle(
 			packet.header.fields["attrs"])
 		isSYN = "SYN" in attrs
-		packetSeqNum = packet.header.fields["seqNum"]
-		socketAckNum = self.ackNum.num
+		packetSeqNum = packet.header.fields["seq"]
+		socketAckNum = self.ack.num
 		if (not isSYN and packetSeqNum > 0 and 
 			socketAckNum != packetSeqNum):
 			logging.debug(str(socketAckNum) + \
 			 ', ' + str(packetSeqNum))
 			raise RxPException(RxPException.SEQ_MISMATCH)
 		else:
-			self.ackNum.next()
+			self.ack.next()
 
 		return packet
 
@@ -225,6 +249,7 @@ class Packet:
 	MAX_WINDOW_SIZE = 65485
 	# Ethernet MTU (1500) - UDP header
 	DATA_LENGTH = 1492
+	STRING_ENCODING = 'UTF-8'
 
 	def __init__(self, header=None, data=""):
 
@@ -244,7 +269,8 @@ class Packet:
 
 		b = bytearray()
 		b.extend(self.header.pickle())
-		b.extend(self.data)
+		b.extend(self.data.encode(
+			encoding=Packet.STRING_ENCODING))
 
 		return b
 
@@ -257,7 +283,8 @@ class Packet:
 
 		p.header = Header.unpickle(
 			byteArr[0:Header.LENGTH])
-		p.data = str(byteArr[Header.LENGTH:])
+		p.data = byteArr[Header.LENGTH:].decode(
+			encoding=Packet.STRING_ENCODING)
 
 		return p
 
@@ -273,7 +300,7 @@ class Packet:
 		p = str(self.pickle())
 
 		s = 0
-		for i in range(0, len(p), 2):
+		for i in range(0, len(p)-1, 2):
 		    w = ord(p[i]) + (ord(p[i+1]) << 8)
 		    s = Packet._add(s, w)
 		s = ~s & 0xffff
@@ -325,8 +352,8 @@ class Header:
 	FIELDS = (
 		("srcPort", uint16, 2),
 		("destPort", uint16, 2),
-		("seqNum", uint32, 4),
-		("ackNum", uint32, 4),
+		("seq", uint32, 4),
+		("ack", uint32, 4),
 		("rcvWindow", uint16, 2),
 		("length", uint16, 2),
 		("checksum", uint16, 2),
@@ -466,33 +493,40 @@ class PacketAttributes:
 	the type of the packet being sent.
 	"""
 	# possible attributes
-	__values = ["SYN", "CLOSE", "NM", "EOM",  
+	_values = ["SYN", "CLOSE", "NM", "EOM",  
 		"ACK", "NOP", "SRQ"] 
 
 	@staticmethod
-	def pickle(attrs):
+	def pickle(attrs=None):
 		"""produces a single byte string with the
 		correct bit set for each pack type passed
 		in as a string.
 		"""
-		submittedAttrs = list(attrs)
+		if attrs is None:
+			submittedAttrs = ()
+		else:
+			submittedAttrs = list(attrs)
+			
 		attrList = []
 		pos = 0
 
 		# add attributes to list if they match
 		# an attribute offered in __values
-		for item in PacketAttributes.__values:
+		for item in PacketAttributes._values:
 			if item in submittedAttrs:
 				byte = 0b1 << pos
 				attrList.append(byte)
 			pos += 1
 
 		# generate binary from array
-		if len(attrList) > 1:
-			byteStr = reduce(lambda x,y: x | y, 
-				attrList)
+		if len(submittedAttrs) > 0:
+			if len(attrList) > 1:
+				byteStr = reduce(lambda x,y: x | y, 
+					attrList)
+			else:
+				byteStr = attrList[0]
 		else:
-			byteStr = attrList[0]
+			byteStr = 0
 		
 		return byteStr
 
@@ -505,7 +539,7 @@ class PacketAttributes:
 		pos = 0
 
 		# check each bit in the byte string
-		for item in PacketAttributes.__values: 
+		for item in PacketAttributes._values: 
 			if (byteStr >> pos & 1):
 				attrs.append(item)
 			pos += 1
