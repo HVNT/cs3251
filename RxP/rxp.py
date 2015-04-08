@@ -239,8 +239,6 @@ class Socket:
 			# send a packet
 			self.sendto(packet, self.destAddr)
 
-			logging.debug("client packet: " + str(packet))
-
 	def recv(self):
 		"""receives data"""
 
@@ -251,10 +249,8 @@ class Socket:
 		data, addr = self.recvfrom(self.rcvWindow)
 		packet = self._packet(data)
 
-		logging.debug("server packet: " + str(packet))
-
 		# decode and receive message
-		message = packet.data
+		message = ""
 		eom = False
 
 		if packet.checkAttrs(("NM",)):

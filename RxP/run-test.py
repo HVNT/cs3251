@@ -15,7 +15,7 @@ test.add(test.testSocketConnect)
 test.add(test.testSocketSendRcv)
 test.add(test.testSocketTimeout)
 
-test.run()
+test.run(test.testSocketSendRcv)
 
 
 

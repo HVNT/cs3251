@@ -202,7 +202,7 @@ def testSocketSendRcv(message="Hello World!"):
 		try:
 			server.listen()
 			server.accept()
-			servermsg = server.rcv()
+			servermsg = server.recv()
 		except Exception as e:
 			logging.debug(e)
 
@@ -276,7 +276,7 @@ def testSocketTimeout():
 	serverThread.start()
 	client.connect(server.srcAddr)
 
-	expectTimeout(client.rcv)
+	expectTimeout(client.recv)
 
 	serverThread.join()
 
