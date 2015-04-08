@@ -12,8 +12,8 @@ def main():
 	test.testPacketChecksum()
 	test.testSocketConnect()
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
-main()
-
+# main()
+test.testSocketSend()
 

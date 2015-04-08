@@ -190,6 +190,53 @@ def testSocketConnect():
 
 	assert_(assertions)
 
+def testSocketSend():
+
+	logging.info('testSocketSend...')
+	global servermsg
+
+	message = "Hello World!"
+	servermsg = ""
+
+	def runserver(server):
+		global servermsg
+		try:
+			server.listen()
+			server.accept()
+			servermsg = server.rcv()
+		except Exception as e:
+			logging.debug(e)
+
+	# create client and server
+	client = Socket()
+	client.bind(('127.0.0.1', 8080))
+	client.timeout = 3.0
+	server = Socket()
+	server.bind(('127.0.0.1', 8081))
+	server.timeout = 3.0
+
+	# run server
+	serverThread = threading.Thread(
+		target=runserver, args=(server,))
+	serverThread.setDaemon(True)
+	serverThread.start()
+
+	# connect to server
+	client.connect(server.srcAddr)
+
+	# send message
+	client.send(message)
+
+	# close server
+	serverThread.join()
+
+	# check if server data matches 
+	# message
+	logging.debug("client msg: " + str(message))
+	logging.debug("server msg: " + str(servermsg))
+
+	assert_(message == servermsg)
+
 
 
 

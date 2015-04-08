@@ -1,6 +1,10 @@
-import ctypes, socket, math, struct
+import ctypes
+import socket 
+import math 
+import struct
 import logging
 from collections import OrderedDict
+from collections import deque
 from sys import getsizeof
 import random
 from functools import reduce
@@ -161,7 +165,8 @@ class Socket:
 			attrs=attrs
 			)
 		packet = Packet(header)
-		self._socket.sendto(packet.pickle(), self.destAddr)
+		self._socket.sendto(
+			packet.pickle(), self.destAddr)
 
 		# receive ACK and change conn status
 		data, addr = self._socket.recvfrom(self.rcvWindow)
@@ -174,34 +179,84 @@ class Socket:
 	def send(self, msg):
 		"""sends a message"""
 		
-		# break msg into increments
-		packetList = list()
+		dataQ = deque()
+		packetQ = deque()
 
-		while i < len(msg):
-			 # extract data
+		# break up message
+		for i in range(0, len(msg), Packet.DATA_LENGTH):
+			# extract data from msg
 			if i+Packet.DATA_LENGTH > len(msg):
-				data = msg[i:]
+				dataQ.append(msg[i:])
 			else:	
-				data = msg[i:i+Packet.DATA_LENGTH]
+				dataQ.append(
+					msg[i:i+Packet.DATA_LENGTH])
 
-			# create packet
-			attrs = PacketAttributes.pickle(())
+		# construct list of packets
+		for data in dataQ:
+			
+			first = data == dataQ[0]
+			last = data == dataQ[-1]
+	
+			# set attributes
+			attrL = list()
+			if first:
+				attrL.append("NM")
+			if last:
+				attrL.append("EOM")
+
+			# create packets
+			attrs = PacketAttributes.pickle(attrL)
 			header = Header(
 				srcPort=self.srcAddr[1],
 				destPort=self.destAddr[1],
 				seq=self.seq.next(),
-				rcvWindow=self.rcvWindow,
 				attrs=attrs
 				)
 			packet = Packet(header, data)
 
-			# increment pointer
-			i += Packet.DATA_LENGTH
+			# add packet to list
+			packetQ.append(packet)
+
+		# send packets
+		while packetQ:
+			packet = packetQ.popleft()
+
+			# send a packet
+			self._socket.sendto(
+				packet.pickle(), self.destAddr)
+
+			logging.debug("client packet: " + str(packet))
 
 	def rcv(self):
 		"""receives data"""
-		pass
+		
+		# listen for data
+		data, addr = self._socket.recvfrom(self.rcvWindow)
+		packet = self._packet(data)
 
+		logging.debug("server packet: " + str(packet))
+
+		# decode and receive message
+		message = ""
+		eom = False
+
+		if packet.checkAttrs(("NM",)):
+			
+			# loop to receive message
+			while not packet.checkAttrs(("EOM",)):
+				# append data
+				message += packet.data
+
+				# get next packet
+				data, addr = self._socket.recvfrom(
+					self.rcvWindow)
+				packet = self._packet(data)
+			else:
+				# append data
+				message += packet.data
+
+		return message
+				
 	def close(self):
 		"""closes the connection and unbinds the port"""
 		self._socket.close()
@@ -248,7 +303,7 @@ class Packet:
 	# or receiver (bytes)
 	MAX_WINDOW_SIZE = 65485
 	# Ethernet MTU (1500) - UDP header
-	DATA_LENGTH = 1492
+	DATA_LENGTH = 3 #1492
 	STRING_ENCODING = 'UTF-8'
 
 	def __init__(self, header=None, data=""):
@@ -312,15 +367,17 @@ class Packet:
 		# calculated checksum
 		packetChksum = self.header.fields["checksum"]
 		calcChksum = self._checksum()
+		self.header.fields["checksum"] = packetChksum
 
 		return packetChksum == calcChksum
 
-	def checkAttrs(self, expectedAttrs):
+	def checkAttrs(self, expectedAttrs, exclusive=False):
 		# verify expected attrs
 		attrs = PacketAttributes.unpickle(
 			self.header.fields["attrs"])
 
-		if len(attrs) != len(expectedAttrs):
+		if (exclusive and 
+			len(attrs) != len(expectedAttrs)):
 			return False
 		else:
 			for attr in expectedAttrs:
@@ -436,7 +493,11 @@ class Header:
 			fieldName = item[0]
 			if fieldName in self.fields:
 				str_ += fieldName + ': ' 
-				str_ += str(self.fields[fieldName]) + ', '
+				if fieldName == "attrs":
+					str_ += repr(PacketAttributes.unpickle(
+						self.fields[fieldName]))
+				else:
+					str_ += str(self.fields[fieldName]) + ', '
 		str_ += " }"
 
 		return str_
