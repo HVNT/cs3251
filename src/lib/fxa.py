@@ -225,7 +225,7 @@ class FxA:
 				self.setupSocket()
 				if(DEBUG_MODE):
 					print("listening")
-				self.socket.listen(MAX_QUEUE_CONNECTIONS)
+				self.socket.listen()
 				if(DEBUG_MODE):
 					print("accepting")
 				self.accepting = True
