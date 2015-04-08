@@ -81,8 +81,13 @@ class Socket:
 			# wait to receive SYN
 			try:
 				data, addr = self._socket.recvfrom(self.rcvWindow)
+<<<<<<< Updated upstream
 				packet = self._packet(data, checkSeq=False)
 				if packet.checkAttrs(("SYN",), exclusive=True):
+=======
+				packet = self._packet(data)
+				if packet.checkAttrs(("SYN",)):
+>>>>>>> Stashed changes
 					break
 			except socket.error as e:
 				if e.errno == 35:
@@ -159,9 +164,12 @@ class Socket:
 
 		if self.srcAddr is None:
 			raise RxPException("Socket not bound")
+<<<<<<< Updated upstream
 		if self.destAddr is None:
 			raise RxPException(
 				"No connection offered. Use listen()")
+=======
+>>>>>>> Stashed changes
 
 		# set initial sequence number for
 		# new connection
