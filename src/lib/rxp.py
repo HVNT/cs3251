@@ -1,6 +1,10 @@
-import ctypes, socket, math, struct
+import ctypes
+import socket 
+import math 
+import struct
 import logging
 from collections import OrderedDict
+from collections import deque
 from sys import getsizeof
 import random
 from functools import reduce
@@ -27,9 +31,9 @@ class Socket:
 		# connection status (see ConnectionStatus)
 		self.connStatus = ConnectionStatus.NO_CONN
 		# destination address (ipaddress, port)
-		self.destAddr = ("", 0)
+		self.destAddr = None
 		# source port
-		self.srcAddr = ("", 0)
+		self.srcAddr = None
 		# seq.num
 		self.seq = WrapableNum(max=Packet.MAX_SEQ_NUM)
 		# ack.num
@@ -49,7 +53,6 @@ class Socket:
 	def timeout(self, value):
 		self._socket.settimeout(value)
 
-
 	def bind(self, srcAddr):
 		"""binds socket to the given port. port is optional.
 		If no port is given, self.port is used. If self.port
@@ -63,9 +66,7 @@ class Socket:
 			try:
 				self._socket.bind(srcAddr)
 			except Exception as e:
-				logging.debug("error binding: " + \
-					repr(self.srcAddr) + \
-					" already in use") 
+				logging.debug(e) 
 				raise e
 
 	def listen(self):
@@ -73,12 +74,21 @@ class Socket:
 		packets. Blocks until a SYN packet is received.
 		"""
 
+		if self.srcAddr is None:
+			raise RxPException("Socket not bound")
+
 		while True:
 			# wait to receive SYN
-			data, addr = self._socket.recvfrom(self.rcvWindow)
-			packet = self._packet(data)
-			if packet.checkAttrs(("SYN",)):
-				break
+			try:
+				data, addr = self._socket.recvfrom(self.rcvWindow)
+				packet = self._packet(data, checkSeq=False)
+				if packet.checkAttrs(("SYN",), exclusive=True):
+					break
+			except socket.error as e:
+				if e.errno == 35:
+					continue
+				else:
+					raise e
 
 		# set ack.num 
 		ackNum = packet.header.fields["seq"]
@@ -94,6 +104,9 @@ class Socket:
 		sends back a SYN, ACK. The sender then
 		sends an ACK and the handshake is complete.
 		"""
+
+		if self.srcAddr is None:
+			raise RxPException("Socket not bound")
 
 		# set dest addr
 		self.destAddr = destAddr
@@ -117,7 +130,7 @@ class Socket:
 
 		# receive SYN, ACK and set ack num
 		data, addr = self._socket.recvfrom(self.rcvWindow)
-		packet = self._packet(data, addr)
+		packet = self._packet(data, addr, checkSeq=False)
 		if not packet.checkAttrs(("SYN", "ACK")):
 			raise RxPException(RxPException.UNEXPECTED_PACKET)
 
@@ -138,13 +151,17 @@ class Socket:
 		self._socket.sendto(packet.pickle(), self.destAddr)
 		self.connStatus = ConnectionStatus.IDLE
 
-
-
 	def accept(self):
 		"""accepts an incoming connection. Implements
 		the receiver side of the handshake. returns
 		the sender's address.
 		"""
+
+		if self.srcAddr is None:
+			raise RxPException("Socket not bound")
+		if self.destAddr is None:
+			raise RxPException(
+				"No connection offered. Use listen()")
 
 		# set initial sequence number for
 		# new connection
@@ -161,52 +178,109 @@ class Socket:
 			attrs=attrs
 			)
 		packet = Packet(header)
-		self._socket.sendto(packet.pickle(), self.destAddr)
+		self._socket.sendto(
+			packet.pickle(), self.destAddr)
 
 		# receive ACK and change conn status
 		data, addr = self._socket.recvfrom(self.rcvWindow)
 		packet = self._packet(data, addr)
 		if not packet.checkAttrs(("ACK",)):
+			logging.debug(packet)
 			raise RxPException(RxPException.UNEXPECTED_PACKET)
 		self.connStatus = ConnectionStatus.IDLE
 
-
 	def send(self, msg):
 		"""sends a message"""
+
+		if self.srcAddr is None:
+			raise RxPException("Socket not bound")
 		
-		# break msg into increments
-		packetList = list()
+		dataQ = deque()
+		packetQ = deque()
 
-		while i < len(msg):
-			 # extract data
+		# break up message
+		for i in range(0, len(msg), Packet.DATA_LENGTH):
+			# extract data from msg
 			if i+Packet.DATA_LENGTH > len(msg):
-				data = msg[i:]
+				dataQ.append(msg[i:])
 			else:	
-				data = msg[i:i+Packet.DATA_LENGTH]
+				dataQ.append(
+					msg[i:i+Packet.DATA_LENGTH])
 
-			# create packet
-			attrs = PacketAttributes.pickle(())
+		# construct list of packets
+		for data in dataQ:
+			
+			first = data == dataQ[0]
+			last = data == dataQ[-1]
+	
+			# set attributes
+			attrL = list()
+			if first:
+				attrL.append("NM")
+			if last:
+				attrL.append("EOM")
+
+			# create packets
+			attrs = PacketAttributes.pickle(attrL)
 			header = Header(
 				srcPort=self.srcAddr[1],
 				destPort=self.destAddr[1],
 				seq=self.seq.next(),
-				rcvWindow=self.rcvWindow,
 				attrs=attrs
 				)
 			packet = Packet(header, data)
 
-			# increment pointer
-			i += Packet.DATA_LENGTH
+			# add packet to list
+			packetQ.append(packet)
+
+		# send packets
+		while packetQ:
+			packet = packetQ.popleft()
+
+			# send a packet
+			self._socket.sendto(
+				packet.pickle(), self.destAddr)
+
+			logging.debug("client packet: " + str(packet))
 
 	def rcv(self):
 		"""receives data"""
-		pass
 
+		if self.srcAddr is None:
+			raise RxPException("Socket not bound")
+		
+		# listen for data
+		data, addr = self._socket.recvfrom(self.rcvWindow)
+		packet = self._packet(data)
+
+		logging.debug("server packet: " + str(packet))
+
+		# decode and receive message
+		message = ""
+		eom = False
+
+		if packet.checkAttrs(("NM",)):
+			
+			# loop to receive message
+			while not packet.checkAttrs(("EOM",)):
+				# append data
+				message += packet.data
+
+				# get next packet
+				data, addr = self._socket.recvfrom(
+					self.rcvWindow)
+				packet = self._packet(data)
+			else:
+				# append data
+				message += packet.data
+
+		return message
+				
 	def close(self):
 		"""closes the connection and unbinds the port"""
 		self._socket.close()
 
-	def _packet(self, data, addr=None):
+	def _packet(self, data, addr=None, checkSeq=True):
 		""" reconstructs a packet from data and verifies
 		checksum and address (if addr is not None).
 		"""
@@ -222,18 +296,19 @@ class Socket:
 			raise RxPException(RxPException.INVALID_CHECKSUM)
 
 		# verify seqnum
-		attrs = PacketAttributes.unpickle(
-			packet.header.fields["attrs"])
-		isSYN = "SYN" in attrs
-		packetSeqNum = packet.header.fields["seq"]
-		socketAckNum = self.ack.num
-		if (not isSYN and packetSeqNum > 0 and 
-			socketAckNum != packetSeqNum):
-			logging.debug(str(socketAckNum) + \
-			 ', ' + str(packetSeqNum))
-			raise RxPException(RxPException.SEQ_MISMATCH)
-		else:
-			self.ack.next()
+		if checkSeq:
+			attrs = PacketAttributes.unpickle(
+				packet.header.fields["attrs"])
+			isSYN = "SYN" in attrs
+			packetSeqNum = packet.header.fields["seq"]
+			socketAckNum = self.ack.num
+			if (not isSYN and packetSeqNum > 0 and 
+				socketAckNum != packetSeqNum):
+				logging.debug(str(socketAckNum) + \
+				 ', ' + str(packetSeqNum))
+				raise RxPException(RxPException.SEQ_MISMATCH)
+			else:
+				self.ack.next()
 
 		return packet
 
@@ -248,19 +323,18 @@ class Packet:
 	# or receiver (bytes)
 	MAX_WINDOW_SIZE = 65485
 	# Ethernet MTU (1500) - UDP header
-	DATA_LENGTH = 1492
+	DATA_LENGTH = 3 #1492
 	STRING_ENCODING = 'UTF-8'
 
 	def __init__(self, header=None, data=""):
 
 		if len(data) > Packet.DATA_LENGTH:
-			# error if too much packet data is given
-			raise RxPException(msg="too much data")
+			self.data = data[0:Packet.DATA_LENGTH-1]
 		else:
 			self.data = data
-			self.header = header or Header()
-			self.header.fields["length"] = len(data)
-			self.header.fields["checksum"] = self._checksum()
+		self.header = header or Header()
+		self.header.fields["length"] = len(data)
+		self.header.fields["checksum"] = self._checksum()
 
 
 	def pickle(self):
@@ -312,15 +386,17 @@ class Packet:
 		# calculated checksum
 		packetChksum = self.header.fields["checksum"]
 		calcChksum = self._checksum()
+		self.header.fields["checksum"] = packetChksum
 
 		return packetChksum == calcChksum
 
-	def checkAttrs(self, expectedAttrs):
+	def checkAttrs(self, expectedAttrs, exclusive=False):
 		# verify expected attrs
 		attrs = PacketAttributes.unpickle(
 			self.header.fields["attrs"])
 
-		if len(attrs) != len(expectedAttrs):
+		if (exclusive and 
+			len(attrs) != len(expectedAttrs)):
 			return False
 		else:
 			for attr in expectedAttrs:
@@ -436,7 +512,11 @@ class Header:
 			fieldName = item[0]
 			if fieldName in self.fields:
 				str_ += fieldName + ': ' 
-				str_ += str(self.fields[fieldName]) + ', '
+				if fieldName == "attrs":
+					str_ += repr(PacketAttributes.unpickle(
+						self.fields[fieldName]))
+				else:
+					str_ += str(self.fields[fieldName]) + ', '
 		str_ += " }"
 
 		return str_
