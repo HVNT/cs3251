@@ -240,17 +240,45 @@ def testSocketTimeout():
 	
 	assertions = []
 
-	s = Socket()
-	s.timeout = 0.1
-	s.bind(("127.0.0.1", 8080))
+	client = Socket()
+	client.timeout = 0.01
+	client.bind(("127.0.0.1", 8080))
+	server = Socket()
+	server.timeout = 0.01
+	server.bind(("127.0.0.1", 8081))
+
+	def runserver(server):
+		server.listen()
+		server.accept()
+
+	def expectTimeout(func, *args):
+		logging.debug(
+			"trying " + func.__name__ + "...")
+		try:
+			func(*args)
+		except socket.timeout:
+			assertions.append(True)
+		else:
+			assertions.append(False)
+
+	# set up server
+	serverThread = threading.Thread(
+		target=runserver, args=(server,))
+	serverThread.setDaemon(True)
 
 	# test listening with a timeout
-	try:
-		s.listen()
-	except socket.timeout:
-		assertions.append(True)
-	else:
-		assertions.append(False)
+	expectTimeout(server.listen)
+
+	# test connecting with no response
+	expectTimeout(client.connect, ("127.0.0.1", 8082))
+
+	# run server and connect
+	serverThread.start()
+	client.connect(server.srcAddr)
+
+	expectTimeout(client.rcv)
+
+	serverThread.join()
 
 	return all(assertions)
 

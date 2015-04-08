@@ -81,8 +81,8 @@ class Socket:
 			# wait to receive SYN
 			try:
 				data, addr = self._socket.recvfrom(self.rcvWindow)
-				packet = self._packet(data)
-				if packet.checkAttrs(("SYN",)):
+				packet = self._packet(data, checkSeq=False)
+				if packet.checkAttrs(("SYN",), exclusive=True):
 					break
 			except socket.error as e:
 				if e.errno == 35:
@@ -130,7 +130,7 @@ class Socket:
 
 		# receive SYN, ACK and set ack num
 		data, addr = self._socket.recvfrom(self.rcvWindow)
-		packet = self._packet(data, addr)
+		packet = self._packet(data, addr, checkSeq=False)
 		if not packet.checkAttrs(("SYN", "ACK")):
 			raise RxPException(RxPException.UNEXPECTED_PACKET)
 
@@ -159,6 +159,9 @@ class Socket:
 
 		if self.srcAddr is None:
 			raise RxPException("Socket not bound")
+		if self.destAddr is None:
+			raise RxPException(
+				"No connection offered. Use listen()")
 
 		# set initial sequence number for
 		# new connection
@@ -182,6 +185,7 @@ class Socket:
 		data, addr = self._socket.recvfrom(self.rcvWindow)
 		packet = self._packet(data, addr)
 		if not packet.checkAttrs(("ACK",)):
+			logging.debug(packet)
 			raise RxPException(RxPException.UNEXPECTED_PACKET)
 		self.connStatus = ConnectionStatus.IDLE
 
@@ -276,7 +280,7 @@ class Socket:
 		"""closes the connection and unbinds the port"""
 		self._socket.close()
 
-	def _packet(self, data, addr=None):
+	def _packet(self, data, addr=None, checkSeq=True):
 		""" reconstructs a packet from data and verifies
 		checksum and address (if addr is not None).
 		"""
@@ -292,18 +296,19 @@ class Socket:
 			raise RxPException(RxPException.INVALID_CHECKSUM)
 
 		# verify seqnum
-		attrs = PacketAttributes.unpickle(
-			packet.header.fields["attrs"])
-		isSYN = "SYN" in attrs
-		packetSeqNum = packet.header.fields["seq"]
-		socketAckNum = self.ack.num
-		if (not isSYN and packetSeqNum > 0 and 
-			socketAckNum != packetSeqNum):
-			logging.debug(str(socketAckNum) + \
-			 ', ' + str(packetSeqNum))
-			raise RxPException(RxPException.SEQ_MISMATCH)
-		else:
-			self.ack.next()
+		if checkSeq:
+			attrs = PacketAttributes.unpickle(
+				packet.header.fields["attrs"])
+			isSYN = "SYN" in attrs
+			packetSeqNum = packet.header.fields["seq"]
+			socketAckNum = self.ack.num
+			if (not isSYN and packetSeqNum > 0 and 
+				socketAckNum != packetSeqNum):
+				logging.debug(str(socketAckNum) + \
+				 ', ' + str(packetSeqNum))
+				raise RxPException(RxPException.SEQ_MISMATCH)
+			else:
+				self.ack.next()
 
 		return packet
 
