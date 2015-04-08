@@ -4,21 +4,31 @@ import threading
 import time
 from functools import reduce
 
-def assert_(result):
-	if isinstance(result, bool):
-		success = result
-	else:
-		success = reduce(lambda x,y: x and y, 
-			result)
+tests = list()
 
-	logging.info("success" if success else "failure")
-	assert success
+def add(test):
+	tests.append(test)
+
+def run(test=None, index=None):
+
+	if test is not None:
+		logging.info(test.__name__ + "...")
+		success = test()
+		logging.info("...done")
+		assert success
+	elif index is not None:
+		run(tests[index])
+	else:
+		runAll()
+
+def runAll():
+	for test in tests:
+		run(test)
 
 def testBind(port=8764):
 	"""Tests socket.bind()"""
 
-	logging.info("testBind...")
-	assertions = [False, False]
+	assertions = []
 
 	s1 = Socket()
 	s2 = Socket()
@@ -26,23 +36,21 @@ def testBind(port=8764):
 	# test binding to a port that should be empty
 	try:
 		s1.bind(('127.0.0.1', port))
-		assertions[0] = True 
+		assertions.append(True) 
 	except Exception:
-		assertions[0] = False
+		assertions.append(False)
 
 	# test binding to a port that is in use
 	try:
 		s2.bind(('127.0.0.1', port))
-		assertions[1] = False
+		assertions.append(False)
 	except Exception:
-		assertions[1] = True
+		assertions.append(True)
 
-	assert_(assertions)
+	return all(assertions)
 
 def testPacketAttributesPickle(attrs=None):
 	"""tests PacketAttributes class"""
-
-	logging.info("testPacketAttributesPickle...")
 
 	if attrs is None:
 		attrs = ('SYN', 'ACK')
@@ -59,12 +67,10 @@ def testPacketAttributesPickle(attrs=None):
 	for index, item in enumerate(attrs):
 		assertions.append(item == attrs2[index])
 
-	assert_(assertions)
+	return all(assertions)
 
 def testHeaderPickle(fields=None):
 	""""tests Header class"""
-
-	logging.info("testHeaderPickle...")
 
 	if fields is None:
 		attrs = PacketAttributes.pickle(('SYN', 'ACK'))
@@ -92,19 +98,19 @@ def testHeaderPickle(fields=None):
 		val2 = h2.fields[fieldName]
 		assertions.append(val1 == val2)
 
-	assert_(assertions)
+	return all(assertions)
 
 def testPacketPickle(header=None, data="Hello World!"):
 	"""tests the Packet class"""
 
-	logging.info("testPacketPickle...")
-
 	if header is None:
+		attrs = PacketAttributes.pickle(('SYN', 'ACK'))
 		header = Header(
-			
-
-
-
+			srcPort=8080,
+			destPort=8081,
+			seq=12345,
+			rcvWindow=4096,
+			attrs=attrs
 			)
 	
 	p1 = Packet(header, data)
@@ -123,11 +129,9 @@ def testPacketPickle(header=None, data="Hello World!"):
 
 	assertions.append(p1.data == p2.data)
 
-	assert_(assertions)
+	return all(assertions)
 
 def testPacketChecksum(p=None):
-
-	logging.info('testPacketChecksum...')
 
 	if p is None:
 		attrs = PacketAttributes.pickle(("SYN",))
@@ -145,11 +149,9 @@ def testPacketChecksum(p=None):
 	logging.debug("chksum1: " + str(p1.header.fields["checksum"]))
 	logging.debug("chksum2: " + str(p2.header.fields["checksum"]))
 
-	assert_(p2.verify())
+	return p2.verify()
 
 def testSocketConnect():
-
-	logging.info('testSocketConnect...')
 
 	def runserver(server):
 		try:
@@ -188,14 +190,11 @@ def testSocketConnect():
 	assertions.append(client.ack.num == server.seq.num)
 	assertions.append(client.seq.num == server.ack.num)
 
-	assert_(assertions)
+	return all(assertions)
 
-def testSocketSend():
+def testSocketSendRcv(message="Hello World!"):
 
-	logging.info('testSocketSend...')
 	global servermsg
-
-	message = "Hello World!"
 	servermsg = ""
 
 	def runserver(server):
@@ -235,22 +234,25 @@ def testSocketSend():
 	logging.debug("client msg: " + str(message))
 	logging.debug("server msg: " + str(servermsg))
 
-	assert_(message == servermsg)
+	return message == servermsg
 
+def testSocketTimeout():
+	
+	assertions = []
 
+	s = Socket()
+	s.timeout = 0.1
+	s.bind(("127.0.0.1", 8080))
 
+	# test listening with a timeout
+	try:
+		s.listen()
+	except socket.timeout:
+		assertions.append(True)
+	else:
+		assertions.append(False)
 
-
-
-
-
-
-
-
-
-
-
-
+	return all(assertions)
 
 
 

@@ -31,9 +31,9 @@ class Socket:
 		# connection status (see ConnectionStatus)
 		self.connStatus = ConnectionStatus.NO_CONN
 		# destination address (ipaddress, port)
-		self.destAddr = ("", 0)
+		self.destAddr = None
 		# source port
-		self.srcAddr = ("", 0)
+		self.srcAddr = None
 		# seq.num
 		self.seq = WrapableNum(max=Packet.MAX_SEQ_NUM)
 		# ack.num
@@ -53,7 +53,6 @@ class Socket:
 	def timeout(self, value):
 		self._socket.settimeout(value)
 
-
 	def bind(self, srcAddr):
 		"""binds socket to the given port. port is optional.
 		If no port is given, self.port is used. If self.port
@@ -67,9 +66,7 @@ class Socket:
 			try:
 				self._socket.bind(srcAddr)
 			except Exception as e:
-				logging.debug("error binding: " + \
-					repr(self.srcAddr) + \
-					" already in use") 
+				logging.debug(e) 
 				raise e
 
 	def listen(self):
@@ -77,12 +74,21 @@ class Socket:
 		packets. Blocks until a SYN packet is received.
 		"""
 
+		if self.srcAddr is None:
+			raise RxPException("Socket not bound")
+
 		while True:
 			# wait to receive SYN
-			data, addr = self._socket.recvfrom(self.rcvWindow)
-			packet = self._packet(data)
-			if packet.checkAttrs(("SYN",)):
-				break
+			try:
+				data, addr = self._socket.recvfrom(self.rcvWindow)
+				packet = self._packet(data)
+				if packet.checkAttrs(("SYN",)):
+					break
+			except socket.error as e:
+				if e.errno == 35:
+					continue
+				else:
+					raise e
 
 		# set ack.num 
 		ackNum = packet.header.fields["seq"]
@@ -98,6 +104,9 @@ class Socket:
 		sends back a SYN, ACK. The sender then
 		sends an ACK and the handshake is complete.
 		"""
+
+		if self.srcAddr is None:
+			raise RxPException("Socket not bound")
 
 		# set dest addr
 		self.destAddr = destAddr
@@ -142,13 +151,14 @@ class Socket:
 		self._socket.sendto(packet.pickle(), self.destAddr)
 		self.connStatus = ConnectionStatus.IDLE
 
-
-
 	def accept(self):
 		"""accepts an incoming connection. Implements
 		the receiver side of the handshake. returns
 		the sender's address.
 		"""
+
+		if self.srcAddr is None:
+			raise RxPException("Socket not bound")
 
 		# set initial sequence number for
 		# new connection
@@ -175,9 +185,11 @@ class Socket:
 			raise RxPException(RxPException.UNEXPECTED_PACKET)
 		self.connStatus = ConnectionStatus.IDLE
 
-
 	def send(self, msg):
 		"""sends a message"""
+
+		if self.srcAddr is None:
+			raise RxPException("Socket not bound")
 		
 		dataQ = deque()
 		packetQ = deque()
@@ -229,6 +241,9 @@ class Socket:
 
 	def rcv(self):
 		"""receives data"""
+
+		if self.srcAddr is None:
+			raise RxPException("Socket not bound")
 		
 		# listen for data
 		data, addr = self._socket.recvfrom(self.rcvWindow)
@@ -309,13 +324,12 @@ class Packet:
 	def __init__(self, header=None, data=""):
 
 		if len(data) > Packet.DATA_LENGTH:
-			# error if too much packet data is given
-			raise RxPException(msg="too much data")
+			self.data = data[0:Packet.DATA_LENGTH-1]
 		else:
 			self.data = data
-			self.header = header or Header()
-			self.header.fields["length"] = len(data)
-			self.header.fields["checksum"] = self._checksum()
+		self.header = header or Header()
+		self.header.fields["length"] = len(data)
+		self.header.fields["checksum"] = self._checksum()
 
 
 	def pickle(self):

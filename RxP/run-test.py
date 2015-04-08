@@ -4,16 +4,18 @@ from rxp import *
 import test
 import logging
 
-def main():
-	test.testBind()
-	test.testPacketAttributesPickle()
-	test.testHeaderPickle()
-	test.testPacketPickle()
-	test.testPacketChecksum()
-	test.testSocketConnect()
-
 logging.basicConfig(level=logging.DEBUG)
 
-# main()
-test.testSocketSend()
+test.add(test.testBind)
+test.add(test.testPacketAttributesPickle)
+test.add(test.testHeaderPickle)
+test.add(test.testPacketPickle)
+test.add(test.testPacketChecksum)
+test.add(test.testSocketConnect)
+test.add(test.testSocketSendRcv)
+test.add(test.testSocketTimeout)
+
+test.run(index=-1)
+
+
 
