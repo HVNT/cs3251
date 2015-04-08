@@ -241,7 +241,7 @@ class Socket:
 
 			logging.debug("client packet: " + str(packet))
 
-	def rcv(self):
+	def recv(self):
 		"""receives data"""
 
 		if self.srcAddr is None:
