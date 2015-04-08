@@ -2,7 +2,7 @@ import queue
 import threading
 import sys
 import socket
-from array import array
+#from array import array
 # import argparse
 
 # parser = argparse.ArgumentParser(description='Transfer files.')
