@@ -117,7 +117,7 @@ class FxA:
 		while(not recvd):
 			if(DEBUG_MODE):
 				print("receiving size..")
-			resp = self.socket.recv(32) #receive the size of packets
+			resp = self.socket.recv() #receive the size of packets
 			resp = bytes.decode(resp)
 			if(DEBUG_MODE):
 				print("received")
@@ -168,7 +168,7 @@ class FxA:
 			if(size - recvd < 1024):
 				temp = self.socket.recv(size-recvd)
 			else:
-				temp = self.socket.recv(1024)
+				temp = self.socket.recv()
 			recvd+=1024
 			#f.write(bytes.decode(temp))
 			f.write(temp)
@@ -196,7 +196,7 @@ class FxA:
 		crecvd = False
 		while(not crecvd):
 			try:
-				resp = self.socket.recv(32)
+				resp = self.socket.recv()
 				resp = bytes.decode(resp).split(':')[0]
 				if(resp == "GOT"):
 					crecvd = True
@@ -230,8 +230,8 @@ class FxA:
 					print("accepting")
 				self.accepting = True
 			try:
-				self.socket.timeout = 1000
-				(self.socket, addr) = self.socket.accept()
+				self.socket.timeout = 1
+				self.socket.accept()
 			except socket.timeout:
 				return	
 			self.accepting = False
@@ -242,8 +242,8 @@ class FxA:
 		if(DEBUG_MODE):
 			print("receiving..")
 		try:
-			self.socket.timeout = 1000
-			recvd = self.socket.recv(1024)
+			self.socket.timeout = 1
+			recvd = self.socket.recv()
 		except socket.timeout:
 			return	
 		recvd = bytes.decode(recvd)
@@ -274,7 +274,7 @@ class FxA:
 				resp = "SND:" + str(len(a))
 				self.socket.send(str.encode(resp))
 				try:
-					resp = self.socket.recv(32)
+					resp = self.socket.recv()
 					resp = bytes.decode(resp).split(':')[0]
 					if(resp == "GOT"):
 						crecvd = True
@@ -330,7 +330,7 @@ class FxA:
 				if(size - brecvd < 1024):
 					temp = self.socket.recv(size-brecvd)
 				else:
-					temp = self.socket.recv(1024)
+					temp = self.socket.recv()
 				brecvd+=1024
 				#f.write(bytes.decode(temp))
 				f.write(temp)
