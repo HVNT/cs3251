@@ -242,9 +242,12 @@ class FxA:
 		if(DEBUG_MODE):
 			print("receiving..")
 		try:
-			self.socket.timeout = 1
+			self.socket.timeout = 10
 			recvd = self.socket.recv()
 		except socket.timeout:
+			#probably should close socket of the client
+			self.socket.close()
+			self.connected = False
 			return	
 		recvd = bytes.decode(recvd)
 
@@ -354,6 +357,7 @@ class FxA:
 				print("Send \"CLOSE\" timed out")
 		finally:
 			self.socket.close()
+		self.connected = False
 		self.running = False
 
 	def window(self, W):

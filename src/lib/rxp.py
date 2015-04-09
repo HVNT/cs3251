@@ -239,9 +239,7 @@ class Socket:
 			# send a packet
 			self.sendto(packet, self.destAddr)
 
-			logging.debug("client packet: " + str(packet))
-
-	def rcv(self):
+	def recv(self):
 		"""receives data"""
 
 		if self.srcAddr is None:
@@ -251,10 +249,8 @@ class Socket:
 		data, addr = self.recvfrom(self.rcvWindow)
 		packet = self._packet(data)
 
-		logging.debug("server packet: " + str(packet))
-
 		# decode and receive message
-		message = packet.data
+		message = ""
 		eom = False
 
 		if packet.checkAttrs(("NM",)):
@@ -267,7 +263,11 @@ class Socket:
 				# get next packet
 				data, addr = self.recvfrom(
 					self.rcvWindow)
-				packet = self._packet(data)
+				try:
+					packet = self._packet(data)
+				except RxException as e:
+					if e.type == RxPException.SEQ_MISMATCH:
+						continue
 			else:
 				# append data
 				message += packet.data
@@ -285,9 +285,9 @@ class Socket:
 
 		packet = Packet.unpickle(data)
 
-		# verify addr
-		if addr is not None and addr != self.destAddr:
-			raise RxPException(RxPException.OUTSIDE_PACKET)
+		## verify addr
+		#if addr is not None and addr != self.destAddr:
+		#	raise RxPException(RxPException.OUTSIDE_PACKET)
 
 		# verify checksum
 		if not packet.verify():
@@ -314,7 +314,7 @@ class Socket:
 		logging.debug("sendto: " + str(packet))
 		self._socket.sendto(packet.pickle(), addr)
 
-	def recvfrom(self, rcvWindow):
+	def recvfrom(self, rcvWindow, expectedAttrs=None):
 		while True:
 			try:
 				data, addr = self._socket.recvfrom(self.rcvWindow)
@@ -341,7 +341,7 @@ class Packet:
 	# or receiver (bytes)
 	MAX_WINDOW_SIZE = 65485
 	# Ethernet MTU (1500) - UDP header
-	DATA_LENGTH = 3 #1492
+	DATA_LENGTH = 1492
 	STRING_ENCODING = 'UTF-8'
 
 	def __init__(self, header=None, data=""):
@@ -361,8 +361,7 @@ class Packet:
 
 		b = bytearray()
 		b.extend(self.header.pickle())
-		b.extend(self.data.encode(
-			encoding=Packet.STRING_ENCODING))
+		b.extend(self.data.encode(encoding=Packet.STRING_ENCODING))
 
 		return b
 

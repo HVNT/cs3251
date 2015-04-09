@@ -2,3 +2,9 @@
 *.pyc
 
 src/lib/rxp.py
+
+src/lib/__pycache__/fxa.cpython-33.pyc
+
+src/lib/__pycache__/rxp.cpython-33.pyc
+
+src/lib/__pycache__/fxa.cpython-33.pyc
