@@ -4,26 +4,36 @@ import threading
 import time
 from functools import reduce
 
-tests = list()
+class Test:
 
-def add(test):
-	tests.append(test)
+	def __init__(self):
+		self.tests = list()
+		self.clientAddr = None
+		self.serverAddr = None
+		self.netAddr = None
 
-def run(test=None, index=None):
+	def add(self, func, *args):
+		self.tests.append((func, args))
 
-	if test is not None:
-		logging.info(test.__name__ + "...")
-		success = test()
-		logging.info("...done")
-		assert success
-	elif index is not None:
-		run(tests[index])
-	else:
-		runAll()
+	def run(self, test=None, args=(), index=None):
 
-def runAll():
-	for test in tests:
-		run(test)
+		if test is not None:
+			logging.info(test.__name__ + "...")
+			success = test(*args)
+			logging.info("...done")
+			assert success
+		elif index is not None:
+			self.run(
+				test=self.tests[index][0], 
+				args=self.tests[index][1])
+		else:
+			self.runAll()
+
+	def runAll(self):
+		for test in self.tests:
+			self.run(
+				test=test[0], 
+				args=test[1])
 
 def testBind(port=8764):
 	"""Tests socket.bind()"""
@@ -151,7 +161,7 @@ def testPacketChecksum(p=None):
 
 	return p2.verify()
 
-def testSocketConnect():
+def testSocketConnect(clientAddr, serverAddr, netAddr):
 
 	def runserver(server):
 		try:
@@ -161,11 +171,11 @@ def testSocketConnect():
 			logging.debug(e)
 
 	client = Socket()
-	client.bind(('127.0.0.1', 8080))
+	client.bind(clientAddr)
 	client.timeout = 3.0
 
 	server = Socket()
-	server.bind(('127.0.0.1', 8081))
+	server.bind(serverAddr)
 	server.timeout = 3.0
 
 	serverThread = threading.Thread(
@@ -173,7 +183,7 @@ def testSocketConnect():
 	serverThread.setDaemon(True)
 	serverThread.start()
 
-	client.connect(server.srcAddr)
+	client.connect(netAddr)
 	logging.debug("client")
 	logging.debug("ack: " + str(client.ack.num))
 	logging.debug("seq: " + str(client.seq.num))
@@ -192,7 +202,7 @@ def testSocketConnect():
 
 	return all(assertions)
 
-def testSocketSendRcv(message="Hello World!"):
+def testSocketSendRcv(clientAddr, serverAddr, netAddr, message="Hello World!"):
 
 	global servermsg
 	servermsg = ""
@@ -208,10 +218,10 @@ def testSocketSendRcv(message="Hello World!"):
 
 	# create client and server
 	client = Socket()
-	client.bind(('127.0.0.1', 8080))
+	client.bind(clientAddr)
 	client.timeout = 3.0
 	server = Socket()
-	server.bind(('127.0.0.1', 8081))
+	server.bind(serverAddr)
 	server.timeout = 3.0
 
 	# run server
@@ -221,7 +231,7 @@ def testSocketSendRcv(message="Hello World!"):
 	serverThread.start()
 
 	# connect to server
-	client.connect(server.srcAddr)
+	client.connect(netAddr)
 
 	# send message
 	client.send(message)
@@ -236,16 +246,16 @@ def testSocketSendRcv(message="Hello World!"):
 
 	return message == servermsg
 
-def testSocketTimeout():
+def testSocketTimeout(clientAddr, serverAddr, netAddr):
 	
 	assertions = []
 
 	client = Socket()
 	client.timeout = 0.01
-	client.bind(("127.0.0.1", 8080))
+	client.bind(clientAddr)
 	server = Socket()
 	server.timeout = 0.01
-	server.bind(("127.0.0.1", 8081))
+	server.bind(serverAddr)
 
 	def runserver(server):
 		server.listen()
@@ -274,7 +284,7 @@ def testSocketTimeout():
 
 	# run server and connect
 	serverThread.start()
-	client.connect(server.srcAddr)
+	client.connect(netAddr)
 
 	expectTimeout(client.recv)
 
