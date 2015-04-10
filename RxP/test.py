@@ -89,7 +89,7 @@ def testHeaderPickle(fields=None):
 			"destPort" : 8081,
 			"seq" : 12345,
 			"ack" : 12346,
-			"rcvWindow" : 4096,
+			"recvWindow" : 4096,
 			"length" : 4096,
 			"checksum" : 123,
 			"attrs" : attrs
@@ -119,7 +119,7 @@ def testPacketPickle(header=None, data="Hello World!"):
 			srcPort=8080,
 			destPort=8081,
 			seq=12345,
-			rcvWindow=4096,
+			recvWindow=4096,
 			attrs=attrs
 			)
 	
@@ -149,7 +149,7 @@ def testPacketChecksum(p=None):
 			srcPort=8080,
 			destPort=8081,
 			seq=123,
-			rcvWindow=4096,
+			recvWindow=4096,
 			attrs=attrs
 			)
 
@@ -219,10 +219,10 @@ def testSocketSendRcv(clientAddr, serverAddr, netAddr, message="Hello World!"):
 	# create client and server
 	client = Socket()
 	client.bind(clientAddr)
-	client.timeout = 3.0
+	client.timeout = 0.01
 	server = Socket()
 	server.bind(serverAddr)
-	server.timeout = 3.0
+	server.timeout = 0.01
 
 	# run server
 	serverThread = threading.Thread(
@@ -296,10 +296,10 @@ def testRequestSendPermission(clientAddr, serverAddr, netAddr):
 	expectedResult = message + servermsg
 
 	client = Socket()
-	client.timeout = 3
+	client.timeout = 0.01
 	client.bind(clientAddr)
 	server = Socket()
-	server.timeout = 3
+	server.timeout = 0.01
 	server.bind(serverAddr)
 
 	def runserver(server):
@@ -327,6 +327,7 @@ def testRequestSendPermission(clientAddr, serverAddr, netAddr):
 	logging.debug("result: " + result)
 
 	return result == expectedResult
+
 
 
 

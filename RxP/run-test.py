@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # 
 # usage: ./run-test.py [-d]
-# 
+# note: NetEmu must be running at
+# address 127.0.0.1, 5001 in its
+# own process
 
 from rxp import *
 from test import *
@@ -26,15 +28,15 @@ else:
 
 # set up tests
 tester = Test()
-tester.add(testBind)
-tester.add(testPacketAttributesPickle)
-tester.add(testHeaderPickle)
-tester.add(testPacketPickle)
-tester.add(testPacketChecksum)
-tester.add(testSocketConnect, C_ADDR, S_ADDR, N_ADDR)
-tester.add(testSocketSendRcv, C_ADDR, S_ADDR, N_ADDR)
-tester.add(testSocketTimeout, C_ADDR, S_ADDR, N_ADDR)
-tester.add(testRequestSendPermission, C_ADDR, S_ADDR, N_ADDR)
+tester.add(testBind) # 0
+tester.add(testPacketAttributesPickle) # 1
+tester.add(testHeaderPickle) # 2
+tester.add(testPacketPickle) # 3
+tester.add(testPacketChecksum) # 4
+tester.add(testSocketConnect, C_ADDR, S_ADDR, N_ADDR) # 5
+tester.add(testSocketSendRcv, C_ADDR, S_ADDR, N_ADDR) # 6
+tester.add(testSocketTimeout, C_ADDR, S_ADDR, N_ADDR) # 7
+tester.add(testRequestSendPermission, C_ADDR, S_ADDR, N_ADDR) # 8
 
 # run tests
-tester.run()
+tester.run(index=6)

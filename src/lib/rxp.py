@@ -27,7 +27,7 @@ class Socket:
 		# size of sender window (bytes)
 		self.sendWindow = 1
 		# size of receiver window (bytes)
-		self.rcvWindow = Packet.MAX_WINDOW_SIZE
+		self.recvWindow = Packet.MAX_WINDOW_SIZE
 		# connection status (see ConnectionStatus)
 		self.connStatus = ConnectionStatus.NO_CONN
 		# destination address (ipaddress, port)
@@ -80,7 +80,7 @@ class Socket:
 		while True:
 			# wait to receive SYN
 			try:
-				data, addr = self.recvfrom(self.rcvWindow)
+				data, addr = self.recvfrom(self.recvWindow)
 				packet = self._packet(data, checkSeq=False)
 				if packet.checkAttrs(("SYN",), exclusive=True):
 					break
@@ -122,14 +122,14 @@ class Socket:
 			srcPort=self.srcAddr[1],
 			destPort=self.destAddr[1],
 			seq=self.seq.next(),
-			rcvWindow=self.rcvWindow,
+			recvWindow=self.recvWindow,
 			attrs=attrs
 			)
 		packet = Packet(header)
 		self.sendto(packet, self.destAddr)
 
 		# receive SYN, ACK and set ack num
-		data, addr = self.recvfrom(self.rcvWindow)
+		data, addr = self.recvfrom(self.recvWindow)
 		packet = self._packet(data, addr, checkSeq=False)
 		if not packet.checkAttrs(("SYN", "ACK")):
 			raise RxPException(RxPException.UNEXPECTED_PACKET)
@@ -144,7 +144,7 @@ class Socket:
 			srcPort=self.srcAddr[1],
 			destPort=self.destAddr[1],
 			seq=self.seq.next(),
-			rcvWindow=self.rcvWindow,
+			recvWindow=self.recvWindow,
 			attrs=attrs
 			)
 		packet = Packet(header)
@@ -174,14 +174,14 @@ class Socket:
 			srcPort=self.srcAddr[1],
 			destPort=self.destAddr[1],
 			seq=self.seq.next(),
-			rcvWindow=self.rcvWindow,
+			recvWindow=self.recvWindow,
 			attrs=attrs
 			)
 		packet = Packet(header)
 		self.sendto(packet, self.destAddr)
 
 		# receive ACK and change conn status
-		data, addr = self.recvfrom(self.rcvWindow)
+		data, addr = self.recvfrom(self.recvWindow)
 		packet = self._packet(data, addr)
 		if not packet.checkAttrs(("ACK",)):
 			logging.debug(packet)
@@ -246,7 +246,7 @@ class Socket:
 			raise RxPException("Socket not bound")
 		
 		# listen for data
-		data, addr = self.recvfrom(self.rcvWindow)
+		data, addr = self.recvfrom(self.recvWindow)
 		packet = self._packet(data)
 
 		# decode and receive message
@@ -262,7 +262,7 @@ class Socket:
 
 				# get next packet
 				data, addr = self.recvfrom(
-					self.rcvWindow)
+					self.recvWindow)
 				try:
 					packet = self._packet(data)
 				except RxException as e:
@@ -314,10 +314,10 @@ class Socket:
 		logging.debug("sendto: " + str(packet))
 		self._socket.sendto(packet.pickle(), addr)
 
-	def recvfrom(self, rcvWindow, expectedAttrs=None):
+	def recvfrom(self, recvWindow, expectedAttrs=None):
 		while True:
 			try:
-				data, addr = self._socket.recvfrom(self.rcvWindow)
+				data, addr = self._socket.recvfrom(self.recvWindow)
 				break
 			except socket.error as e:
 				if e.errno == 35:
@@ -447,7 +447,7 @@ class Header:
 		("destPort", uint16, 2),
 		("seq", uint32, 4),
 		("ack", uint32, 4),
-		("rcvWindow", uint16, 2),
+		("recvWindow", uint16, 2),
 		("length", uint16, 2),
 		("checksum", uint16, 2),
 		("attrs", uint32, 4)
