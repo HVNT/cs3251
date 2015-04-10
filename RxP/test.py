@@ -161,7 +161,7 @@ def testPacketChecksum(p=None):
 
 	return p2.verify()
 
-def testSocketConnect(clientAddr, serverAddr, netAddr):
+def testSocketConnect(clientAddr, serverAddr, netAddr, timeout=3):
 
 	def runserver(server):
 		try:
@@ -172,11 +172,11 @@ def testSocketConnect(clientAddr, serverAddr, netAddr):
 
 	client = Socket()
 	client.bind(clientAddr)
-	client.timeout = 3.0
+	client.timeout = timeout
 
 	server = Socket()
 	server.bind(serverAddr)
-	server.timeout = 3.0
+	server.timeout = timeout
 
 	serverThread = threading.Thread(
 		target=runserver, args=(server,))
@@ -202,7 +202,7 @@ def testSocketConnect(clientAddr, serverAddr, netAddr):
 
 	return all(assertions)
 
-def testSocketSendRcv(clientAddr, serverAddr, netAddr, message="Hello World!"):
+def testSocketSendRcv(clientAddr, serverAddr, netAddr, timeout=3, message="Hello World!"):
 
 	global servermsg
 	servermsg = ""
@@ -219,10 +219,14 @@ def testSocketSendRcv(clientAddr, serverAddr, netAddr, message="Hello World!"):
 	# create client and server
 	client = Socket()
 	client.bind(clientAddr)
-	client.timeout = 0.01
+	client.timeout = timeout
+	client.resendLimit = 100
+
 	server = Socket()
 	server.bind(serverAddr)
-	server.timeout = 0.01
+	server.timeout = timeout
+	server.resendLimit = 100
+
 
 	# run server
 	serverThread = threading.Thread(
@@ -246,15 +250,15 @@ def testSocketSendRcv(clientAddr, serverAddr, netAddr, message="Hello World!"):
 
 	return message == servermsg
 
-def testSocketTimeout(clientAddr, serverAddr, netAddr):
+def testSocketTimeout(clientAddr, serverAddr, netAddr, timeout=3):
 	
 	assertions = []
 
 	client = Socket()
-	client.timeout = 0.01
+	client.timeout = timeout
 	client.bind(clientAddr)
 	server = Socket()
-	server.timeout = 0.01
+	server.timeout = timeout
 	server.bind(serverAddr)
 
 	def runserver(server):
@@ -289,17 +293,17 @@ def testSocketTimeout(clientAddr, serverAddr, netAddr):
 
 	return all(assertions)
 
-def testRequestSendPermission(clientAddr, serverAddr, netAddr):
+def testRequestSendPermission(clientAddr, serverAddr, netAddr, timeout=3):
 
 	message = "Hello World!"
 	servermsg = " right back at ya"
 	expectedResult = message + servermsg
 
 	client = Socket()
-	client.timeout = 0.01
+	client.timeout = timeout
 	client.bind(clientAddr)
 	server = Socket()
-	server.timeout = 0.01
+	server.timeout = timeout
 	server.bind(serverAddr)
 
 	def runserver(server):

@@ -76,6 +76,36 @@ class Socket:
 		else:
 			raise RxPException("No source address specified")
 
+	def connect(self, destAddr):
+		"""connects to destAddr given in format
+		(ipaddr, portNum). Uses a handshake. The
+		sender sends a SYN packet. The receiver
+		sends back a SYN, ACK. The sender then
+		sends an ACK and the handshake is complete.
+		"""
+
+		if self.srcAddr is None:
+			raise RxPException("Socket not bound")
+
+		# set dest addr
+		self.destAddr = destAddr
+
+		# set initial sequence number
+		self.seq.reset(0)
+
+		synack = self._sendSYN()
+
+		# set ack.num
+		ackNum = synack.header.fields["seq"]
+		self.ack.reset(ackNum + 1)
+
+		# send ACK
+		self._sendACK()
+
+		# update socket state
+		self.isSender = True
+		self.connStatus = ConnectionStatus.IDLE
+
 	def listen(self):
 		"""listens on the given port number for 
 		packets. Blocks until a SYN packet is received.
@@ -100,55 +130,6 @@ class Socket:
 
 		# accept() should be called directly after
 		# listen() in order to complete the handshake
-
-	def connect(self, destAddr):
-		"""connects to destAddr given in format
-		(ipaddr, portNum). Uses a handshake. The
-		sender sends a SYN packet. The receiver
-		sends back a SYN, ACK. The sender then
-		sends an ACK and the handshake is complete.
-		"""
-
-		if self.srcAddr is None:
-			raise RxPException("Socket not bound")
-
-		# set dest addr
-		self.destAddr = destAddr
-
-		# set initial sequence number
-		self.seq.reset(0)
-
-		# send SYN packet with sequence number
-		attrs = PacketAttributes.pickle(("SYN",))
-		header = Header(
-			srcPort=self.srcAddr[1],
-			destPort=self.destAddr[1],
-			seq=self.seq.num,
-			recvWindow=self.recvWindow,
-			attrs=attrs
-			)
-		packet = Packet(header)
-		self.sendto(packet, self.destAddr)
-		self.seq.next()
-
-		# wait to receive SYN, ACK. Only break out of loop
-		# when SYN, ACK is received
-		while True:
-			data, addr = self.recvfrom(self.recvWindow)
-			packet = self._packet(data=data, addr=addr, checkSeq=False)
-			if packet.checkAttrs(("SYN", "ACK"), exclusive=True):
-				break	
-
-		# set ack.num
-		ackNum = packet.header.fields["seq"]
-		self.ack.reset(ackNum + 1)
-
-		# send ACK
-		self._sendACK()
-
-		# update socket state
-		self.isSender = True
-		self.connStatus = ConnectionStatus.IDLE
 
 	def accept(self):
 		"""accepts an incoming connection. Implements
@@ -465,6 +446,41 @@ class Socket:
 
 			if packet.checkAttrs(attr):
 				return packet
+
+	def _sendSYN(self):
+
+		resendsRemaining = self.resendLimit
+
+		# create SYN packet with sequence number
+		attrs = PacketAttributes.pickle(("SYN",))
+		header = Header(
+			srcPort=self.srcAddr[1],
+			destPort=self.destAddr[1],
+			seq=self.seq.num,
+			recvWindow=self.recvWindow,
+			attrs=attrs
+			)
+		packet = Packet(header)
+		self.seq.next()
+
+		while resendsRemaining:
+
+			# send SYN
+			self.sendto(packet, self.destAddr)
+
+			# wait to receive SYN, ACK. Only break out of loop
+			# when SYN, ACK is received (or resendLimit exceeded)
+			try:
+				data, addr = self.recvfrom(self.recvWindow)
+			except socket.timeout:
+				resendsRemaining -= 1
+			else:
+				packet = self._packet(data=data, addr=addr, checkSeq=False)
+				if packet.checkAttrs(("SYN", "ACK"), exclusive=True):
+
+					break
+
+		return packet
 
 	def _sendACK(self):
 		"""send ACK"""

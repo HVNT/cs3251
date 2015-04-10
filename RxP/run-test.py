@@ -34,7 +34,7 @@ tester.add(testHeaderPickle) # 2
 tester.add(testPacketPickle) # 3
 tester.add(testPacketChecksum) # 4
 tester.add(testSocketConnect, C_ADDR, S_ADDR, N_ADDR) # 5
-tester.add(testSocketSendRcv, C_ADDR, S_ADDR, N_ADDR) # 6
+tester.add(testSocketSendRcv, C_ADDR, S_ADDR, N_ADDR, 0.01) # 6
 tester.add(testSocketTimeout, C_ADDR, S_ADDR, N_ADDR) # 7
 tester.add(testRequestSendPermission, C_ADDR, S_ADDR, N_ADDR) # 8
 
