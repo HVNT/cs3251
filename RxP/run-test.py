@@ -23,7 +23,7 @@ C_ADDR = ("127.0.0.1", 8080)
 S_ADDR = ("127.0.0.1", 8081)
 N_ADDR = ("127.0.0.1", 5001)
 
-LOG_LVL = logging.INFO
+LOG_LVL = logging.DEBUG
 
 # set log level
 logging.basicConfig(level=LOG_LVL)
@@ -41,6 +41,7 @@ tester.add(testPacketChecksum)
 tester.add(testSocketConnect, C_ADDR, S_ADDR, N_ADDR)
 tester.add(testSocketSendRcv, C_ADDR, S_ADDR, N_ADDR)
 tester.add(testSocketTimeout, C_ADDR, S_ADDR, N_ADDR)
+tester.add(testRequestSendPermission, C_ADDR, S_ADDR, N_ADDR)
 
 # run tests
-tester.run()
+tester.run(index=-1)

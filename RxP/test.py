@@ -279,9 +279,6 @@ def testSocketTimeout(clientAddr, serverAddr, netAddr):
 	# test listening with a timeout
 	expectTimeout(server.listen)
 
-	# test connecting with no response
-	expectTimeout(client.connect, ("127.0.0.1", 8081))
-
 	# run server and connect
 	serverThread.start()
 	client.connect(netAddr)
@@ -292,6 +289,44 @@ def testSocketTimeout(clientAddr, serverAddr, netAddr):
 
 	return all(assertions)
 
+def testRequestSendPermission(clientAddr, serverAddr, netAddr):
+
+	message = "Hello World!"
+	servermsg = " right back at ya"
+	expectedResult = message + servermsg
+
+	client = Socket()
+	client.timeout = 3
+	client.bind(clientAddr)
+	server = Socket()
+	server.timeout = 3
+	server.bind(serverAddr)
+
+	def runserver(server):
+		server.listen()
+		server.accept()
+		msg = server.recv()
+		server.send(msg + servermsg)
+
+	# create and start server thread
+	serverThread = threading.Thread(
+		target=runserver, 
+		args=(server,))
+	serverThread.daemon = True
+	serverThread.start()
+
+	# connect to server
+	client.connect(netAddr)
+
+	client.send(message)
+	result = client.recv()
+
+	serverThread.join()
+
+	logging.debug("expected: " + expectedResult)
+	logging.debug("result: " + result)
+
+	return result == expectedResult
 
 
 

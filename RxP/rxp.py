@@ -38,6 +38,9 @@ class Socket:
 		self.seq = WrapableNum(max=Packet.MAX_SEQ_NUM)
 		# ack.num
 		self.ack = WrapableNum(max=Packet.MAX_SEQ_NUM)
+		# denotes if the socket is the
+		# sender or receiver
+		self.isSender = False
 
 	def __del__(self):
 		# close connection if 
@@ -62,12 +65,12 @@ class Socket:
 		if srcAddr:
 			self.srcAddr = srcAddr
 
+		if self._socket is None:
+			self._socket = socket.socket(
+				socket.AF_INET, socket.SOCK_DGRAM)
+
 		if self.srcAddr:
-			try:
-				self._socket.bind(srcAddr)
-			except Exception as e:
-				logging.debug(e) 
-				raise e
+			self._socket.bind(srcAddr)
 
 	def listen(self):
 		"""listens on the given port number for 
@@ -78,17 +81,13 @@ class Socket:
 			raise RxPException("Socket not bound")
 
 		while True:
-			# wait to receive SYN
-			try:
+			# wait to receive SYN. If error 35 is thrown, ignore
+			# it and keep looping. Once a SYN packet is received
+			# (only SYN), break out of loop
 				data, addr = self.recvfrom(self.rcvWindow)
 				packet = self._packet(data, checkSeq=False)
 				if packet.checkAttrs(("SYN",), exclusive=True):
 					break
-			except socket.error as e:
-				if e.errno == 35:
-					continue
-				else:
-					raise e
 
 		# set ack.num 
 		ackNum = packet.header.fields["seq"]
@@ -96,6 +95,9 @@ class Socket:
 
 		# set dest addr
 		self.destAddr = addr
+
+		# accept() should be called directly after
+		# listen() in order to complete the handshake
 
 	def connect(self, destAddr):
 		"""connects to destAddr given in format
@@ -128,17 +130,19 @@ class Socket:
 		packet = Packet(header)
 		self.sendto(packet, self.destAddr)
 
-		# receive SYN, ACK and set ack num
-		data, addr = self.recvfrom(self.rcvWindow)
-		packet = self._packet(data, addr, checkSeq=False)
-		if not packet.checkAttrs(("SYN", "ACK")):
-			raise RxPException(RxPException.UNEXPECTED_PACKET)
+		# wait to receive SYN, ACK. Only break out of loop
+		# when SYN, ACK is received
+		while True:
+			data, addr = self.recvfrom(self.rcvWindow)
+			packet = self._packet(data, addr, checkSeq=False)
+			if packet.checkAttrs(("SYN", "ACK"), exclusive=True):
+				break	
 
 		# set ack.num
 		ackNum = packet.header.fields["seq"]
 		self.ack.reset(ackNum+1)
 
-		# send ACK, change connection status
+		# send ACK
 		attrs = PacketAttributes.pickle(("ACK",))
 		header = Header(
 			srcPort=self.srcAddr[1],
@@ -149,6 +153,9 @@ class Socket:
 			)
 		packet = Packet(header)
 		self.sendto(packet, self.destAddr)
+
+		# update socket state
+		self.isSender = True
 		self.connStatus = ConnectionStatus.IDLE
 
 	def accept(self):
@@ -180,12 +187,15 @@ class Socket:
 		packet = Packet(header)
 		self.sendto(packet, self.destAddr)
 
-		# receive ACK and change conn status
-		data, addr = self.recvfrom(self.rcvWindow)
-		packet = self._packet(data, addr)
-		if not packet.checkAttrs(("ACK",)):
-			logging.debug(packet)
-			raise RxPException(RxPException.UNEXPECTED_PACKET)
+		# wait to receive ACK
+		while True:
+			data, addr = self.recvfrom(self.rcvWindow)
+			packet = self._packet(data, addr)
+			if packet.checkAttrs(("ACK",), exclusive=True):
+				break
+
+		# update Socket state
+		self.isSender = False
 		self.connStatus = ConnectionStatus.IDLE
 
 	def send(self, msg):
@@ -193,6 +203,14 @@ class Socket:
 
 		if self.srcAddr is None:
 			raise RxPException("Socket not bound")
+
+		if not self.isSender:
+			# request to be sender. sends a sender
+			# request and blocks until a response
+			# is given. returns false if request is
+			# denied or times out
+			if not self._requestSendPermission():
+				return
 		
 		dataQ = deque()
 		packetQ = deque()
@@ -240,39 +258,67 @@ class Socket:
 			self.sendto(packet, self.destAddr)
 
 	def recv(self):
-		"""receives data"""
+		"""receives a message"""
 
 		if self.srcAddr is None:
 			raise RxPException("Socket not bound")
 		
-		# listen for data
-		data, addr = self.recvfrom(self.rcvWindow)
-		packet = self._packet(data)
-
 		# decode and receive message
 		message = ""
 		eom = False
 
-		if packet.checkAttrs(("NM",)):
-			
-			# loop to receive message
-			while not packet.checkAttrs(("EOM",)):
-				# append data
-				message += packet.data
+		while True:
+			# listen for data
+			data, addr = self.recvfrom(self.rcvWindow)
+			packet = self._packet(data)
 
-				# get next packet
-				data, addr = self.recvfrom(
-					self.rcvWindow)
-				try:
-					packet = self._packet(data)
-				except RxException as e:
-					if e.type == RxPException.SEQ_MISMATCH:
-						continue
-			else:
-				# append data
-				message += packet.data
+			if packet.checkAttrs(("SRQ",)):
+				# handle send request
+				# send ACK back if we are not in
+				# the middle of sending (which we
+				# would have to be doing on a separate
+				# thread to encounter)
+				self._grantSendPermission()
+
+			elif packet.checkAttrs(("NM",)):
+				
+				# loop to receive message
+				while not packet.checkAttrs(("EOM",)):
+					# append data
+					message += packet.data
+
+					# get next packet
+					data, addr = self.recvfrom(
+						self.rcvWindow)
+					try:
+						packet = self._packet(data)
+					except RxException as e:
+						if e.type == RxPException.SEQ_MISMATCH:
+							continue
+				else:
+					# append data and exit loop
+					message += packet.data
+					break
 
 		return message
+
+	def sendto(self, packet, addr):
+		logging.debug("sendto: " + str(packet))
+		self._socket.sendto(packet.pickle(), addr)
+
+	def recvfrom(self, rcvWindow, expectedAttrs=None):
+		while True:
+			try:
+				data, addr = self._socket.recvfrom(self.rcvWindow)
+				break
+			except socket.error as e:
+				if e.errno == 35:
+					continue
+				else:
+					raise e
+
+		logging.debug("recvfrom: " + str(Packet.unpickle(data)))
+		return (data, addr)
 				
 	def close(self):
 		"""closes the connection and unbinds the port"""
@@ -310,24 +356,49 @@ class Socket:
 
 		return packet
 
-	def sendto(self, packet, addr):
-		logging.debug("sendto: " + str(packet))
-		self._socket.sendto(packet.pickle(), addr)
+	def _requestSendPermission(self):
+		"""request to be sender. sends a sender 
+		request and blocks until a response is given.
+		"""
 
-	def recvfrom(self, rcvWindow, expectedAttrs=None):
-		while True:
-			try:
-				data, addr = self._socket.recvfrom(self.rcvWindow)
-				break
-			except socket.error as e:
-				if e.errno == 35:
-					continue
-				else:
-					raise e
+		# send SRQ
+		attrs = PacketAttributes.pickle(("SRQ",))
+		header = Header(
+			srcPort=self.srcAddr[1],
+			destPort=self.destAddr[1],
+			seq=self.seq.next(),
+			rcvWindow=self.rcvWindow,
+			attrs=attrs
+			)
+		packet = Packet(header)
+		self.sendto(packet, self.destAddr)
 
-		logging.debug("recvfrom: " + str(Packet.unpickle(data)))
-		return (data, addr)
+		# wait to receive SRQ, ACK. Return true if a response
+		# come back. Return false if no socket times out
+		# (no response)
+		try:
+			while True:
+				data, addr = self.recvfrom(self.rcvWindow)
+				packet = self._packet(data, addr)
+				if packet.checkAttrs(("SRQ","ACK"), exclusive=True):
+					break
+		except socket.timeout:
+			return False
+		else:
+			return True
 
+	def _grantSendPermission(self):
+		# grant permission by sending SRQ, ACK
+		attrs = PacketAttributes.pickle(("SRQ","ACK"))
+		header = Header(
+			srcPort=self.srcAddr[1],
+			destPort=self.destAddr[1],
+			seq=self.seq.next(),
+			rcvWindow=self.rcvWindow,
+			attrs=attrs
+			)
+		packet = Packet(header)
+		self.sendto(packet, self.destAddr)
 
 
 class Packet:
