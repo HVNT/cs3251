@@ -122,11 +122,14 @@ class Socket:
 			# wait to receive SYN
 			try:
 				data, addr = self.recvfrom(self.recvWindow)
+				packet = self._packet(data, checkSeq=False)
 			except socket.timeout:
 				waitLimit -= 1
 				continue
+			except RxPException as e:
+				if(e.type == RxPException.INVALID_CHECKSUM):
+					continue
 			else:
-				packet = self._packet(data, checkSeq=False)
 				if packet.checkAttrs(("SYN",), exclusive=True):
 					break
 				else:
@@ -252,6 +255,7 @@ class Socket:
 			try:
 				# wait for ACK or SYNACK (resent)
 				data, addr = self.recvfrom(self.recvWindow)
+				packet = self._packet(data, checkSeq=False)
 
 			except socket.timeout:
 
@@ -266,9 +270,12 @@ class Socket:
 				packetQ.extendleft(sentQ)
 				sentQ.clear()
 
+			except RxPException as e:
+				if(e.type == RxPException.INVALID_CHECKSUM):
+					continue
+
 			else:
 
-				packet = self._packet(data, checkSeq=False)
 
 				if packet.checkAttrs(("SYN","ACK"), exclusive=True):
 					# resend ACK acknowledging SYNACK
@@ -324,6 +331,8 @@ class Socket:
 			try:
 				packet = self._packet(data)
 			except RxPException as e:
+				if e.type == RxPException.INVALID_CHECKSUM:
+					continue
 				if e.type != RxPException.SEQ_MISMATCH:
 					raise e
 			else:
@@ -530,11 +539,14 @@ class Socket:
 			# when SYN, ACK is received (or resendLimit exceeded)
 			try:
 				data, addr = self.recvfrom(self.recvWindow)
+				packet = self._packet(data=data, addr=addr, checkSeq=False)
 			except socket.timeout:
 				logging.debug("_SendSYN() timeout")
 				resendsRemaining -= 1
+			except RxPException as e:
+				if(e.type == RxPException.INVALID_CHECKSUM):
+					continue
 			else:
-				packet = self._packet(data=data, addr=addr, checkSeq=False)
 				if packet.checkAttrs(("SYN", "ACK"), exclusive=True):
 					break
 
@@ -568,11 +580,14 @@ class Socket:
 			# when ACK is received (or resendLimit exceeded)
 			try:
 				data, addr = self.recvfrom(self.recvWindow)
+				packet = self._packet(data=data, addr=addr, checkSeq=False)
 			except socket.timeout:
 				logging.debug("_sendSYNACK() timeout")
 				resendsRemaining -= 1
+			except RxPException as e:
+				if(e.type == RxPException.INVALID_CHECKSUM):
+					continue
 			else:
-				packet = self._packet(data=data, addr=addr, checkSeq=False)
 				
 				if packet.checkAttrs(("SYN",), exclusive=True):
 					# SYN was resent, resend SYNACK
