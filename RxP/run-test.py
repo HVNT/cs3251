@@ -39,4 +39,4 @@ tester.add(testSocketTimeout, C_ADDR, S_ADDR, N_ADDR, 0.01) # 7
 tester.add(testRequestSendPermission, C_ADDR, S_ADDR, N_ADDR, 0.01) # 8
 
 # run tests
-tester.run(index=8)
+tester.run(index=6)

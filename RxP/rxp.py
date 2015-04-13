@@ -324,6 +324,8 @@ class Socket:
 			try:
 				packet = self._packet(data)
 			except RxPException as e:
+				if e.type == RxPException.INVALID_CHECKSUM:
+					continue
 				if e.type != RxPException.SEQ_MISMATCH:
 					raise e
 			else:
