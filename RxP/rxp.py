@@ -51,7 +51,7 @@ class Socket:
 		# sender or receiver
 		self.isSender = False
 		# limit on how many times to resend a packet
-		self.resendLimit = 5
+		self.resendLimit = 100
 		# denotes if messages should will be passed in
 		# as strings or bytes
 		self.acceptStrings = False
@@ -263,6 +263,7 @@ class Socket:
 				self.sendWindow = 1
 				resendsRemaining -= 1
 				logging.debug("send() timeout")
+				logging.debug("resends: "  + str(resendsRemaining))
 				
 				# prepend packetQ with sentQ, then
 				# clear sentQ
@@ -281,6 +282,8 @@ class Socket:
 					# resend ACK acknowledging SYNACK
 					self._sendACK()
 
+					resendsRemaining = self.resendLimit
+
 					# prepend packetQ with sentQ, then
 					# clear sentQ
 					sentQ.reverse()
@@ -294,12 +297,10 @@ class Socket:
 					self.seq.reset(packet.header.fields["ack"])
 					self.sendWindow += 1
 					resendsRemaining = self.resendLimit
-					sentQ.popleft()
-
-
-		# check if we have exceeded the resend limit
-		if  not resendsRemaining:
-			raise RxPException(RxPException.RESEND_LIM)
+					# pop off packet that was just acked
+					# (except for final ack)
+					if sentQ:
+						sentQ.popleft()
 
 	def recv(self):
 		"""receives a message"""
@@ -331,6 +332,8 @@ class Socket:
 			try:
 				packet = self._packet(data)
 			except RxPException as e:
+				logging.debug(str(e))
+				logging.debug("acknum: " + str(self.ack.num))
 				if e.type == RxPException.INVALID_CHECKSUM:
 					continue
 				if e.type != RxPException.SEQ_MISMATCH:
@@ -573,7 +576,7 @@ class Socket:
 		resendsRemaining = self.resendLimit
 		while resendsRemaining:
 
-			# send SYN
+			# send SYNACK
 			self.sendto(packet, self.destAddr)
 
 			# wait to receive ACK. Only break out of loop

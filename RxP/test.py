@@ -220,13 +220,11 @@ def testSocketSendRcv(clientAddr, serverAddr, netAddr, timeout=3, message="Hello
 	client = Socket()
 	client.bind(clientAddr)
 	client.timeout = timeout
-	client.resendLimit = 10
 	client.acceptStrings = True
 
 	server = Socket()
 	server.bind(serverAddr)
 	server.timeout = timeout
-	server.resendLimit = 10
 	server.acceptStrings = True
 
 
