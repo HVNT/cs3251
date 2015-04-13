@@ -219,7 +219,7 @@ class Socket:
 			# send packets (without waiting for ack)
 			# until sendWindow is 0 or all packets
 			# have been sent
-			logging.debug(packetQ)
+
 			while self.sendWindow and packetQ:
 				# grab a packet from end the list
 				packet = packetQ.popleft()
@@ -246,7 +246,7 @@ class Socket:
 				# reset send window and resend last packet
 				self.sendWindow = 1
 				resendsRemaining -= 1
-				logging.debug("send timeout")
+				logging.debug("send() timeout")
 				
 				# prepend packetQ with sentQ, then
 				# clear sentQ
@@ -289,7 +289,6 @@ class Socket:
 					message += packet.data
 
 					# send ACK
-					logging.debug("sending ACK")
 					self._sendACK()
 
 					# get next packet
@@ -331,8 +330,8 @@ class Socket:
 				else:
 					raise e
 
-		# logging.debug("recvfrom: " + str(Packet.unpickle(data)))
-		# logging.debug("")
+		logging.debug("recvfrom: " + str(Packet.unpickle(data)))
+		logging.debug("")
 		return (data, addr)
 
 	def _packet(self, data, addr=None, checkSeq=True):
@@ -485,7 +484,7 @@ class Socket:
 			try:
 				data, addr = self.recvfrom(self.recvWindow)
 			except socket.timeout:
-				logging.debug("_SendSYN timeout")
+				logging.debug("_SendSYN() timeout")
 				resendsRemaining -= 1
 			else:
 				packet = self._packet(data=data, addr=addr, checkSeq=False)
@@ -521,7 +520,7 @@ class Socket:
 			try:
 				data, addr = self.recvfrom(self.recvWindow)
 			except socket.timeout:
-				logging.debug("_sendSYNACK timeout")
+				logging.debug("_sendSYNACK() timeout")
 				resendsRemaining -= 1
 			else:
 				packet = self._packet(data=data, addr=addr, checkSeq=False)
