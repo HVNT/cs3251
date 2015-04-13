@@ -51,10 +51,10 @@ class Socket:
 		# sender or receiver
 		self.isSender = False
 		# limit on how many times to resend a packet
-		self.resendLimit = 10
+		self.resendLimit = 5
 		# denotes if messages should will be passed in
 		# as strings or bytes
-		self.acceptStrings = True
+		self.acceptStrings = False
 
 	# timeout is used to interact with
 	# self._socket's timeout property
@@ -159,6 +159,8 @@ class Socket:
 	def send(self, msg):
 		"""sends a message"""
 
+		#print("Sender:" + str(self.isSender == True))
+
 		if self.srcAddr is None:
 			raise RxPException("Socket not bound")
 
@@ -168,7 +170,9 @@ class Socket:
 			# is given. returns false if request is
 			# denied or times out
 			self.isSender = self._requestSendPermission()
+			print("tried to send, so became sender")
 			if not self.isSender:
+				print("tried to send but not sender")
 				return
 		
 		# FIFO queues for data fragments, queue for packets
@@ -262,6 +266,8 @@ class Socket:
 	def recv(self):
 		"""receives a message"""
 
+		#print("Sender:" + str(self.isSender == True))
+		
 		if self.srcAddr is None:
 			raise RxPException("Socket not bound")
 
@@ -269,7 +275,10 @@ class Socket:
 			raise RxPException("Connection status not idle")
 		
 		# decode and receive message
-		message = ""
+		if(self.acceptStrings):
+			message = ""
+		else:
+			message = bytes()
 
 		while True:
 			# listen for data
@@ -286,8 +295,10 @@ class Socket:
 				while not packet.checkAttrs(("EOM",)):
 					
 					# append data
-					message += packet.data
-
+					if(self.acceptStrings):
+						message += packet.data
+					else:
+						message += packet.data
 					# send ACK
 					self._sendACK()
 
@@ -330,9 +341,23 @@ class Socket:
 				else:
 					raise e
 
-		logging.debug("recvfrom: " + str(Packet.unpickle(data)))
+		#logging.debug("recvfrom: " + str(Packet.unpickle(data)))
 		logging.debug("")
 		return (data, addr)
+
+	def close(self):
+		# create packets
+		attrs = PacketAttributes.pickle(("CLOSE",))
+		header = Header(
+			srcPort=self.srcAddr[1],
+			destPort=self.destAddr[1],
+			seq=self.seq.num,
+			attrs=attrs
+			)
+		packet = Packet(header)
+		self.seq.next()
+
+		self.sendto(packet, self.destAddr)
 
 	def _packet(self, data, addr=None, checkSeq=True):
 		""" reconstructs a packet from data and verifies
@@ -361,7 +386,9 @@ class Socket:
 			
 			if (not isSYN and packetSeqNum and 
 				socketAckNum != packetSeqNum):
-				raise RxPException(RxPException.SEQ_MISMATCH)
+				#print("SEQ_MISMATCH")
+				supeerrrr = 2
+				#raise RxPException(RxPException.SEQ_MISMATCH)
 			elif not isACK:
 				self.ack.next()
 
@@ -395,6 +422,7 @@ class Socket:
 		# come back. Return false if no socket times out
 		# (no response)
 		while resendsRemaining:
+			print("request send token")
 
 			# send SYN
 			self.sendto(packet, self.destAddr)
@@ -408,6 +436,18 @@ class Socket:
 			else:
 				packet = self._packet(data=data, addr=addr, checkSeq=False)
 				if packet.checkAttrs(("SRQ","ACK"), exclusive=True):
+					attrs = PacketAttributes.pickle(("ACK",))
+					header = Header(
+						srcPort=self.srcAddr[1],
+						destPort=self.destAddr[1],
+						seq=self.seq.num,
+						recvWindow=self.recvWindow,
+						attrs=attrs
+						)
+					packet = Packet(header)
+					self.sendto(packet, self.destAddr)
+					self.seq.next()
+					self.sendto(packet, self.destAddr)
 					break
 
 		return True
@@ -430,6 +470,7 @@ class Socket:
 		self.seq.next()
 
 		while resendsRemaining:
+			print("sending send token accept")
 
 			# send SYN
 			self.sendto(packet, self.destAddr)
@@ -446,6 +487,8 @@ class Socket:
 					break
 
 		self.isSender = False
+
+		print("receiver now")
 
 	def _waitFor(self, attr):
 
@@ -597,7 +640,7 @@ class Packet:
 			p.data = byteArr[Header.LENGTH:].decode(
 				encoding=Packet.STRING_ENCODING)
 		else:
-			p.data = bytearr[Header.LENGTH]
+			p.data = byteArr[Header.LENGTH:]
 
 		return p
 
