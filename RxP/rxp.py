@@ -330,10 +330,10 @@ class Socket:
 			
 			# deserialize data into packet
 			try:
-				packet = self._packet(data)
+				logging.debug("acknum: " + str(self.ack.num))
+				packet = self._packet(data, checkSeq=False)
 			except RxPException as e:
 				logging.debug(str(e))
-				logging.debug("acknum: " + str(self.ack.num))
 				if e.type == RxPException.INVALID_CHECKSUM:
 					continue
 				if e.type != RxPException.SEQ_MISMATCH:
@@ -348,13 +348,16 @@ class Socket:
 				
 				# # NM, EOM, or middle of message
 				# else:
-					
-				# append data if it's not a resent packet
-				if packet.header.fields["seq"] == (self.ack.num - 1):
-					message += packet.data
 
-				# send ACK
-				self._sendACK()
+				if packet.header.fields["seq"] < self.ack.num:
+					# an ack was dropped and this packet
+					# was resent. ignore data, but send ack
+					self._sendACK();
+				else:
+					self.ack.next()
+					message += packet.data
+					# send ACK
+					self._sendACK()
 
 				# stop looping if EOM
 				if packet.checkAttrs(("EOM",)):
