@@ -52,6 +52,9 @@ class Socket:
 		self.isSender = False
 		# limit on how many times to resend a packet
 		self.resendLimit = 10
+		# denotes if messages should will be passed in
+		# as strings or bytes
+		self.acceptStrings = True
 
 	# timeout is used to interact with
 	# self._socket's timeout property
@@ -147,26 +150,7 @@ class Socket:
 		# new connection
 		self.seq.reset(0)
 
-		# send SYN, ACK with sequence number
-		attrs = PacketAttributes.pickle(("SYN","ACK"))
-		header = Header(
-			srcPort=self.srcAddr[1],
-			destPort=self.destAddr[1],
-			seq=self.seq.num,
-			ack=self.ack.num,
-			recvWindow=self.recvWindow,
-			attrs=attrs
-			)
-		packet = Packet(header)
-		self.sendto(packet, self.destAddr)
-		self.seq.next()
-
-		# wait to receive ACK
-		while True:
-			data, addr = self.recvfrom(self.recvWindow)
-			packet = self._packet(data, addr)
-			if packet.checkAttrs(("ACK",), exclusive=True):
-				break
+		packet = self._sendSYNACK()
 
 		# update Socket state
 		self.isSender = False
@@ -255,6 +239,8 @@ class Socket:
 				# remove packet from sentQ
 				self.sendWindow += 1
 				resendsRemaining = self.resendLimit
+				sentQ.popleft()
+				logging.debug(packetQ)
 			except socket.timeout:
 				# reset send window and resend last packet
 				self.sendWindow = 1
@@ -305,6 +291,7 @@ class Socket:
 					message += packet.data
 
 					# send ACK
+					logging.debug("sending ACK")
 					self._sendACK()
 
 					# get next packet
@@ -355,7 +342,7 @@ class Socket:
 		checksum and address (if addr is not None).
 		"""
 
-		packet = Packet.unpickle(data)
+		packet = Packet.unpickle(data, toString=self.acceptStrings)
 
 		## verify addr
 		#if addr is not None and addr != self.destAddr:
@@ -370,8 +357,8 @@ class Socket:
 			
 			attrs = PacketAttributes.unpickle(
 				packet.header.fields["attrs"])
-			isSYN = "SYN" in attrs
-			isACK = "ACK" in attrs
+			isSYN = packet.checkAttrs(("SYN",), exclusive=True)
+			isACK = packet.checkAttrs(("ACK",), exclusive=True)
 			packetSeqNum = packet.header.fields["seq"]
 			socketAckNum = self.ack.num
 			
@@ -392,6 +379,8 @@ class Socket:
 		request and blocks until a response is given.
 		"""
 
+		resendsRemaining = self.resendLimit
+
 		# send SRQ
 		attrs = PacketAttributes.pickle(("SRQ",))
 		header = Header(
@@ -408,19 +397,28 @@ class Socket:
 		# wait to receive SRQ, ACK. Return true if a response
 		# come back. Return false if no socket times out
 		# (no response)
-		try:
-			while True:
+		while resendsRemaining:
+
+			# send SYN
+			self.sendto(packet, self.destAddr)
+
+			# wait to receive SYN, ACK. Only break out of loop
+			# when SYN, ACK is received (or resendLimit exceeded)
+			try:
 				data, addr = self.recvfrom(self.recvWindow)
-				packet = self._packet(data, addr)
+			except socket.timeout:
+				resendsRemaining -= 1
+			else:
+				packet = self._packet(data=data, addr=addr, checkSeq=False)
 				if packet.checkAttrs(("SRQ","ACK"), exclusive=True):
 					break
-		except socket.timeout:
-			return False
-		else:
-			return True
+
+		return True
 
 	def _grantSendPermission(self):
 		""" grant send permission by sending SRQ, ACK"""
+
+		resendsRemaining = self.resendLimit
 
 		attrs = PacketAttributes.pickle(("SRQ","ACK"))
 		header = Header(
@@ -433,6 +431,22 @@ class Socket:
 		packet = Packet(header)
 		self.sendto(packet, self.destAddr)
 		self.seq.next()
+
+		while resendsRemaining:
+
+			# send SYN
+			self.sendto(packet, self.destAddr)
+
+			# wait to receive SYN, ACK. Only break out of loop
+			# when SYN, ACK is received (or resendLimit exceeded)
+			try:
+				data, addr = self.recvfrom(self.recvWindow)
+			except socket.timeout:
+				resendsRemaining -= 1
+			else:
+				packet = self._packet(data=data, addr=addr, checkSeq=False)
+				if packet.checkAttrs(("ACK",), exclusive=True):
+					break
 
 		self.isSender = False
 
@@ -477,10 +491,44 @@ class Socket:
 			else:
 				packet = self._packet(data=data, addr=addr, checkSeq=False)
 				if packet.checkAttrs(("SYN", "ACK"), exclusive=True):
-
 					break
 
 		return packet
+
+	def _sendSYNACK(self):
+
+		resendsRemaining = self.resendLimit
+
+		# send SYN, ACK with sequence number
+		attrs = PacketAttributes.pickle(("SYN","ACK"))
+		header = Header(
+			srcPort=self.srcAddr[1],
+			destPort=self.destAddr[1],
+			seq=self.seq.num,
+			ack=self.ack.num,
+			recvWindow=self.recvWindow,
+			attrs=attrs
+			)
+		packet = Packet(header)
+		self.seq.next()
+
+		self.sendto(packet, self.destAddr)
+
+		while resendsRemaining:
+
+			# send SYN
+			self.sendto(packet, self.destAddr)
+
+			# wait to receive SYN, ACK. Only break out of loop
+			# when SYN, ACK is received (or resendLimit exceeded)
+			try:
+				data, addr = self.recvfrom(self.recvWindow)
+			except socket.timeout:
+				resendsRemaining -= 1
+			else:
+				packet = self._packet(data=data, addr=addr, checkSeq=False)
+				if packet.checkAttrs(("ACK",), exclusive=True):
+					break
 
 	def _sendACK(self):
 		"""send ACK"""
@@ -528,13 +576,18 @@ class Packet:
 
 		b = bytearray()
 		b.extend(self.header.pickle())
-		b.extend(self.data.encode(
-			encoding=Packet.STRING_ENCODING))
+
+		if isinstance(self.data, str):
+			b.extend(self.data.encode(
+				encoding=Packet.STRING_ENCODING))
+		elif (isinstance(self.data, bytearray)
+			or isinstance(self.data, bytes)):
+			b.extend(self.data)
 
 		return b
 
 	@staticmethod
-	def unpickle(byteArr):
+	def unpickle(byteArr, toString=False):
 		""" returns an instance of Packet
 		reconstructed from a byte string.
 		"""
@@ -542,8 +595,12 @@ class Packet:
 
 		p.header = Header.unpickle(
 			byteArr[0:Header.LENGTH])
-		p.data = byteArr[Header.LENGTH:].decode(
-			encoding=Packet.STRING_ENCODING)
+
+		if toString:
+			p.data = byteArr[Header.LENGTH:].decode(
+				encoding=Packet.STRING_ENCODING)
+		else:
+			p.data = bytearr[Header.LENGTH]
 
 		return p
 
