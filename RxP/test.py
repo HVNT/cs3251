@@ -316,6 +316,7 @@ def testRequestSendPermission(clientAddr, serverAddr, netAddr, timeout=3):
 		server.accept()
 		msg = server.recv()
 		server.send(msg + servermsg)
+		msg2 = server.recv()
 
 	# create and start server thread
 	serverThread = threading.Thread(
@@ -329,6 +330,8 @@ def testRequestSendPermission(clientAddr, serverAddr, netAddr, timeout=3):
 
 	client.send(message)
 	result = client.recv()
+
+	client.send(message)
 
 	serverThread.join()
 

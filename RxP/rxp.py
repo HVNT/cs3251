@@ -176,16 +176,16 @@ class Socket:
 		if self.srcAddr is None:
 			raise RxPException("Socket not bound")
 
-		if not self.isSender:
+		# if not self.isSender:
 			# request to be sender. sends a sender
 			# request and blocks until a response
 			# is given. returns false if request is
 			# denied or times out
-			self.isSender = self._requestSendPermission()
-			print("tried to send, so became sender")
-			if not self.isSender:
-				print("tried to send but not sender")
-				return
+			# self.isSender = self._requestSendPermission()
+			# print("tried to send, so became sender")
+			# if not self.isSender:
+			# 	print("tried to send but not sender")
+			# 	return
 		
 		# FIFO queues for data fragments, queue for packets
 		# waiting to be sent, and queue for packets that
@@ -326,17 +326,17 @@ class Socket:
 			except RxPException as e:
 				if e.type != RxPException.SEQ_MISMATCH:
 					raise e
-
-			# multiplex on packet attributes
-			if packet.checkAttrs(("SRQ",)):
-
-				# request permission to send data
-				# and break out of loop
-				self._grantSendPermission()
-			
-			# NM, EOM, or middle of message
 			else:
+				# multiplex on packet attributes
+				# if packet.checkAttrs(("SRQ",)):
+
+				# 	# request permission to send data
+				# 	# and break out of loop
+				# 	self._grantSendPermission()
 				
+				# # NM, EOM, or middle of message
+				# else:
+					
 				# append data if it's not a resent packet
 				if packet.header.fields["seq"] == (self.ack.num - 1):
 					message += packet.data
@@ -449,6 +449,7 @@ class Socket:
 			try:
 				data, addr = self.recvfrom(self.recvWindow)
 			except socket.timeout:
+				logging.debug("_requestSendPermission timeout")
 				resendsRemaining -= 1
 			else:
 				packet = self._packet(data=data, addr=addr, checkSeq=False)
@@ -486,7 +487,7 @@ class Socket:
 				logging.debug("_grantSendPermission timeout")
 				resendsRemaining -= 1
 			else:
-				packet = self._packet(data=data, addr=addr, checkSeq=False)
+				packet = self._packet(data=data, checkSeq=False)
 				if packet.checkAttrs(("ACK",), exclusive=True):
 					break
 
