@@ -215,10 +215,11 @@ class Socket:
 			packetQ.append(packet)
 
 		resendsRemaining = self.resendLimit
-		while True:
+		while packetQ and resendsRemaining:
 			# send packets (without waiting for ack)
 			# until sendWindow is 0 or all packets
 			# have been sent
+			logging.debug(packetQ)
 			while self.sendWindow and packetQ:
 				# grab a packet from end the list
 				packet = packetQ.popleft()
@@ -233,18 +234,19 @@ class Socket:
 
 			# wait for ack
 			try:
-				packetAck = self._waitFor(("ACK",))
+				ack = self._waitFor(("ACK",))
 				# increase sendWindow back to original
 				# size (no positive flow control), 
 				# remove packet from sentQ
+				self.seq.reset(ack.header.fields["seq"])
 				self.sendWindow += 1
 				resendsRemaining = self.resendLimit
 				sentQ.popleft()
-				logging.debug(packetQ)
 			except socket.timeout:
 				# reset send window and resend last packet
 				self.sendWindow = 1
 				resendsRemaining -= 1
+				logging.debug("send timeout")
 				
 				# prepend packetQ with sentQ, then
 				# clear sentQ
@@ -252,14 +254,10 @@ class Socket:
 				packetQ.extendleft(sentQ)
 				sentQ.clear()
 
-			# check if we have exceeded the resend limit
-			if  not resendsRemaining:
-				raise RxPException("Maximum resend limit reached")
 
-			# success condition. 
-			# done sending
-			if not packetQ:
-				break
+		# check if we have exceeded the resend limit
+		if  not resendsRemaining:
+			raise RxPException("Maximum resend limit reached")
 
 	def recv(self):
 		"""receives a message"""
@@ -300,7 +298,7 @@ class Socket:
 					try:
 						packet = self._packet(data)
 
-					except RxException as e:
+					except RxPException as e:
 						if e.type == RxPException.SEQ_MISMATCH:
 							continue
 						else:
@@ -487,6 +485,7 @@ class Socket:
 			try:
 				data, addr = self.recvfrom(self.recvWindow)
 			except socket.timeout:
+				logging.debug("_SendSYN timeout")
 				resendsRemaining -= 1
 			else:
 				packet = self._packet(data=data, addr=addr, checkSeq=False)
@@ -512,8 +511,6 @@ class Socket:
 		packet = Packet(header)
 		self.seq.next()
 
-		self.sendto(packet, self.destAddr)
-
 		while resendsRemaining:
 
 			# send SYN
@@ -524,6 +521,7 @@ class Socket:
 			try:
 				data, addr = self.recvfrom(self.recvWindow)
 			except socket.timeout:
+				logging.debug("_sendSYNACK timeout")
 				resendsRemaining -= 1
 			else:
 				packet = self._packet(data=data, addr=addr, checkSeq=False)
