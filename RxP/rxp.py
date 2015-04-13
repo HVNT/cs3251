@@ -408,8 +408,9 @@ class Socket:
 
 		waitLimit = self.resendLimit
 		while waitLimit:
+			
 			self.sendto(packet, self.destAddr)
-			waitLimit -= 1
+
 			try:
 				data, addr = self.recvfrom(self.recvWindow)
 				packet = self._packet(data, checkSeq=False)
@@ -417,8 +418,7 @@ class Socket:
 			except socket.timeout:
 
 				# reset send window and resend last packet
-				self.sendWindow = 1
-				resendsRemaining -= 1
+				waitLimit -= 1
 
 			except RxPException as e:
 				if(e.type == RxPException.INVALID_CHECKSUM):

@@ -1,5 +1,9 @@
 # cs3251
+ 
+**Authors**
 
+	Benjamin Newcomer
+	Wataru Uneo
 
 **Usage**
 
