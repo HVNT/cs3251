@@ -33,10 +33,10 @@ tester.add(testPacketAttributesPickle) # 1
 tester.add(testHeaderPickle) # 2
 tester.add(testPacketPickle) # 3
 tester.add(testPacketChecksum) # 4
-tester.add(testSocketConnect, C_ADDR, S_ADDR, N_ADDR) # 5
+tester.add(testSocketConnect, C_ADDR, S_ADDR, N_ADDR, 0.01) # 5
 tester.add(testSocketSendRcv, C_ADDR, S_ADDR, N_ADDR, 0.01) # 6
-tester.add(testSocketTimeout, C_ADDR, S_ADDR, N_ADDR) # 7
-tester.add(testRequestSendPermission, C_ADDR, S_ADDR, N_ADDR) # 8
+tester.add(testSocketTimeout, C_ADDR, S_ADDR, N_ADDR, 0.01) # 7
+tester.add(testRequestSendPermission, C_ADDR, S_ADDR, N_ADDR, 0.01) # 8
 
 # run tests
-tester.run(index=6)
+tester.run(index=8)

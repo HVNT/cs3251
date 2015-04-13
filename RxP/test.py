@@ -124,7 +124,7 @@ def testPacketPickle(header=None, data="Hello World!"):
 			)
 	
 	p1 = Packet(header, data)
-	p2 = Packet.unpickle(p1.pickle())
+	p2 = Packet.unpickle(p1.pickle(), toString=True)
 
 	logging.debug(p1)
 	logging.debug(p2)
@@ -168,7 +168,7 @@ def testSocketConnect(clientAddr, serverAddr, netAddr, timeout=3):
 			server.listen()
 			server.accept()
 		except Exception as e:
-			logging.debug(e)
+			logging.debug("server " + str(e))
 
 	client = Socket()
 	client.bind(clientAddr)
@@ -214,18 +214,20 @@ def testSocketSendRcv(clientAddr, serverAddr, netAddr, timeout=3, message="Hello
 			server.accept()
 			servermsg = server.recv()
 		except Exception as e:
-			logging.debug(e)
+			logging.debug("server " + str(e))
 
 	# create client and server
 	client = Socket()
 	client.bind(clientAddr)
 	client.timeout = timeout
 	client.resendLimit = 10
+	client.acceptStrings = True
 
 	server = Socket()
 	server.bind(serverAddr)
 	server.timeout = timeout
-	server.resendLimit = 100
+	server.resendLimit = 10
+	server.acceptStrings = True
 
 
 	# run server
@@ -270,10 +272,11 @@ def testSocketTimeout(clientAddr, serverAddr, netAddr, timeout=3):
 			"trying " + func.__name__ + "...")
 		try:
 			func(*args)
-		except socket.timeout:
-			assertions.append(True)
-		else:
-			assertions.append(False)
+		except RxPException as e:
+			if e.type == RxPException.CONNECTION_TIMEOUT:
+				assertions.append(True)
+			else:
+				assertions.append(False)
 
 	# set up server
 	serverThread = threading.Thread(
@@ -302,9 +305,11 @@ def testRequestSendPermission(clientAddr, serverAddr, netAddr, timeout=3):
 	client = Socket()
 	client.timeout = timeout
 	client.bind(clientAddr)
+	client.acceptStrings = True
 	server = Socket()
 	server.timeout = timeout
 	server.bind(serverAddr)
+	server.acceptStrings = True
 
 	def runserver(server):
 		server.listen()
