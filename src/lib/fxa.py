@@ -25,6 +25,7 @@ class FxA:
 		self.socket = socket
 
 	def run(self):
+		self.setupSocket()
 		self.getuserinput()
 		while self.running:
 			if(self.running and self.server): 
@@ -83,7 +84,6 @@ class FxA:
 		if(self.connected):
 			return
 		try:
-			self.setupSocket()
 			if(DEBUG_MODE):
 				print("connecting")
 			self.socket.connect((self.ip, self.destport))
@@ -166,7 +166,7 @@ class FxA:
 			if(DEBUG_MODE):
 				print("received:" + str(recvd) + " bytes")
 			if(size - recvd < 1024):
-				temp = self.socket.recv(size-recvd)
+				temp = self.socket.recv()
 			else:
 				temp = self.socket.recv()
 			recvd+=1024
@@ -222,7 +222,6 @@ class FxA:
 			print("running" + str(self.connected))
 		if(not self.connected):
 			if(not self.accepting):
-				self.setupSocket()
 				if(DEBUG_MODE):
 					print("listening")
 				self.socket.listen()
@@ -305,7 +304,7 @@ class FxA:
 				resp = "GOT:"+str(size)
 				self.socket.send(str.encode(resp))
 				if(DEBUG_MODE):
-					print("Got size:" + size)
+					print("Got size:" + str(size))
 			except ValueError:
 				resp = "ERR:VALUE_ERROR"
 				self.socket.send(str.encode(resp))
@@ -331,7 +330,7 @@ class FxA:
 				if(DEBUG_MODE):
 					print("received:" + str(brecvd) + " bytes")
 				if(size - brecvd < 1024):
-					temp = self.socket.recv(size-brecvd)
+					temp = self.socket.recv()
 				else:
 					temp = self.socket.recv()
 				brecvd+=1024
