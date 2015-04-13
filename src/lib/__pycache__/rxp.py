@@ -238,7 +238,7 @@ class Socket:
 			# send packets (without waiting for ack)
 			# until sendWindow is 0 or all packets
 			# have been sent
-			print("sending")
+
 			while self.sendWindow and packetQ:
 				# grab a packet from end the list
 				packet = packetQ.popleft()
@@ -254,9 +254,7 @@ class Socket:
 			# wait for ack
 			try:
 				# wait for ACK or SYNACK (resent)
-				print("receiving ack")
 				data, addr = self.recvfrom(self.recvWindow)
-				print("receieved ack")
 				packet = self._packet(data, checkSeq=False)
 
 			except socket.timeout:
@@ -365,10 +363,6 @@ class Socket:
 				if packet.checkAttrs(("EOM",)):
 					break
 
-				if packet.checkAttrs(("CLOSE", )):
-					self._sendACK()
-					break
-
 		# if not waitLimit:
 		# 	raise RxPException(
 		# 		RxPException.CONNECTION_TIMEOUT)
@@ -406,28 +400,7 @@ class Socket:
 		packet = Packet(header)
 		self.seq.next()
 
-		waitLimit = self.resendLimit
-		while waitLimit:
-			self.sendto(packet, self.destAddr)
-			waitLimit -= 1
-			try:
-				data, addr = self.recvfrom(self.recvWindow)
-				packet = self._packet(data, checkSeq=False)
-
-			except socket.timeout:
-
-				# reset send window and resend last packet
-				self.sendWindow = 1
-				resendsRemaining -= 1
-
-			except RxPException as e:
-				if(e.type == RxPException.INVALID_CHECKSUM):
-					continue
-			else:
-				if packet.checkAttrs(("ACK",), exclusive=True):
-					break
-
-
+		self.sendto(packet, self.destAddr)
 
 	def _packet(self, data, addr=None, checkSeq=True):
 		""" reconstructs a packet from data and verifies
