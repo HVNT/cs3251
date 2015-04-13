@@ -231,6 +231,8 @@ class Socket:
 				# send packet
 				self.sendto(packet, self.destAddr)
 
+				print("SEND SEQ NUM:" + str(packet.header.fields["seq"]))
+
 				# decrement send window, add 
 				# to sentQ
 				self.sendWindow -= 1
@@ -285,6 +287,7 @@ class Socket:
 			data, addr = self.recvfrom(self.recvWindow)
 			packet = self._packet(data)
 
+
 			if packet.checkAttrs(("SRQ",)):
 				# request permission to send data
 				self._grantSendPermission()
@@ -305,11 +308,17 @@ class Socket:
 					# get next packet
 					data, addr = self.recvfrom(
 						self.recvWindow)
+
+					print("RECV SEQ NUM: " + str(packet.header.fields["seq"]) + ", EXP:" + str(self.ack.num))
+
+
+
 					try:
 						packet = self._packet(data)
 
 					except RxPException as e:
 						if e.type == RxPException.SEQ_MISMATCH:
+							print("mismath")
 							continue
 						else:
 							raise e
@@ -386,7 +395,7 @@ class Socket:
 			
 			if (not isSYN and packetSeqNum and 
 				socketAckNum != packetSeqNum):
-				#print("SEQ_MISMATCH")
+				print("SEQ_MISMATCH")
 				supeerrrr = 2
 				#raise RxPException(RxPException.SEQ_MISMATCH)
 			elif not isACK:
