@@ -51,7 +51,7 @@ class Socket:
 		# sender or receiver
 		self.isSender = False
 		# limit on how many times to resend a packet
-		self.resendLimit = 5
+		self.resendLimit = 20
 		# denotes if messages should will be passed in
 		# as strings or bytes
 		self.acceptStrings = False
@@ -119,7 +119,11 @@ class Socket:
 
 		while True:
 			# wait to receive SYN
-			data, addr = self.recvfrom(self.recvWindow)
+			try:
+				data, addr = self.recvfrom(self.recvWindow)
+			except:
+				print("lol")
+				return
 			packet = self._packet(data, checkSeq=False)
 			if packet.checkAttrs(("SYN",), exclusive=True):
 				break
@@ -169,11 +173,13 @@ class Socket:
 			# request and blocks until a response
 			# is given. returns false if request is
 			# denied or times out
+
+			print("tried to send, so becoming sender")
 			self.isSender = self._requestSendPermission()
-			print("tried to send, so became sender")
 			if not self.isSender:
 				print("tried to send but not sender")
 				return
+			print("became sender")
 		
 		# FIFO queues for data fragments, queue for packets
 		# waiting to be sent, and queue for packets that
@@ -231,7 +237,7 @@ class Socket:
 				# send packet
 				self.sendto(packet, self.destAddr)
 
-				print("SEND SEQ NUM:" + str(packet.header.fields["seq"]))
+				#print("SEND SEQ NUM:" + str(packet.header.fields["seq"]))
 
 				# decrement send window, add 
 				# to sentQ
@@ -285,7 +291,10 @@ class Socket:
 		while True:
 			# listen for data
 			data, addr = self.recvfrom(self.recvWindow)
+
 			packet = self._packet(data)
+
+			#print("RECV SEQ NUM: " + str(packet.header.fields["seq"]) + ", EXP:" + str(self.ack.num-1))
 
 
 			if packet.checkAttrs(("SRQ",)):
@@ -309,7 +318,6 @@ class Socket:
 					data, addr = self.recvfrom(
 						self.recvWindow)
 
-					print("RECV SEQ NUM: " + str(packet.header.fields["seq"]) + ", EXP:" + str(self.ack.num))
 
 
 
@@ -367,6 +375,7 @@ class Socket:
 		self.seq.next()
 
 		self.sendto(packet, self.destAddr)
+		self.isSender = True
 
 	def _packet(self, data, addr=None, checkSeq=True):
 		""" reconstructs a packet from data and verifies
@@ -395,7 +404,7 @@ class Socket:
 			
 			if (not isSYN and packetSeqNum and 
 				socketAckNum != packetSeqNum):
-				print("SEQ_MISMATCH")
+				print("SEQ_MISMATCH:" + str(packetSeqNum) + "," + str(socketAckNum))
 				supeerrrr = 2
 				#raise RxPException(RxPException.SEQ_MISMATCH)
 			elif not isACK:
@@ -411,6 +420,9 @@ class Socket:
 		"""request to be sender. sends a sender 
 		request and blocks until a response is given.
 		"""
+
+		print("seq:" + str(self.seq.num) + " ack" + str(self.ack.num))
+
 
 		resendsRemaining = self.resendLimit
 
@@ -463,6 +475,8 @@ class Socket:
 
 	def _grantSendPermission(self):
 		""" grant send permission by sending SRQ, ACK"""
+
+		print("seq:" + str(self.seq.num) + " ack" + str(self.ack.num))
 
 		resendsRemaining = self.resendLimit
 
