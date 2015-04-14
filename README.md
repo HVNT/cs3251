@@ -11,9 +11,9 @@ __RxP, FxA__
 
 **Files**
 
-	rxp.py
+	lib/rxp.py
 		The RxP module is a python3 implementation of the RxP protocol
-	fxa.py
+	lib/fxa.py
 		The 
 	runserver.py
 		./run-server.py X A P 
@@ -39,6 +39,8 @@ __RxP, FxA__
 		Commands:
 			source py3env/bin/activate - activates the python 3.4.3 environment
 			deactivate - deactivates the environemnt if it is currently active
+	notes
+		A sample file to use for get and post testing
 
 **Usage**
 
