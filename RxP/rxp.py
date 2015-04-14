@@ -375,7 +375,8 @@ class Socket:
 		return message
 
 	def sendto(self, packet, addr):
-		logging.debug("sendto: " + str(packet))
+		name = "client" if self.isSender else "server"
+		logging.debug(name + ": sendto: " + str(packet))
 		logging.debug("")
 		self._socket.sendto(packet.pickle(), addr)
 
@@ -390,7 +391,8 @@ class Socket:
 				else:
 					raise e
 
-		logging.debug("recvfrom: " + str(Packet.unpickle(data)))
+		name = "client" if self.isSender else "server"
+		logging.debug(name + ": recvfrom: " + str(Packet.unpickle(data)))
 		logging.debug("")
 		return (data, addr)
 
@@ -654,7 +656,7 @@ class Packet:
 	# or receiver (bytes)
 	MAX_WINDOW_SIZE = 65485
 	# Ethernet MTU (1500) - UDP header
-	DATA_LENGTH = 3 #1492
+	DATA_LENGTH = 3 #1000
 	STRING_ENCODING = 'UTF-8'
 
 	def __init__(self, header=None, data=""):
