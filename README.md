@@ -153,7 +153,8 @@ enum ConnectionStatus
 
 
 **Known Problems**
-
+	
+	- All functions work on a reliable network, but some bugs related to packet dropping and corruption could not be fixed. See the following bugs and limitations for more info. 
 	- When the final ACK of the connection handshake is dropped, this causes the SYNACK packet to be resent, but never received. This causes the rest of the message sending to fail.
 	- For the get command, the source file must be in the same directory as the run-server.py file and the get destination file must be in the same directory as the run-client.py file.
 	- For the post command, the source file must be in the same directory as the run-client.py file and the post destination file must be in the same directory as the run-server.py file.
