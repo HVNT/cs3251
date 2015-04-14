@@ -117,7 +117,7 @@ class Socket:
 		if self.srcAddr is None:
 			raise RxPException("Socket not bound")
 
-		waitLimit = self.resendLimit
+		waitLimit = self.resendLimit*100
 		while waitLimit:
 			# wait to receive SYN
 			try:
@@ -174,21 +174,8 @@ class Socket:
 	def send(self, msg):
 		"""sends a message"""
 
-		#print("Sender:" + str(self.isSender == True))
-
 		if self.srcAddr is None:
 			raise RxPException("Socket not bound")
-
-		# if not self.isSender:
-			# request to be sender. sends a sender
-			# request and blocks until a response
-			# is given. returns false if request is
-			# denied or times out
-			# self.isSender = self._requestSendPermission()
-			# print("tried to send, so became sender")
-			# if not self.isSender:
-			# 	print("tried to send but not sender")
-			# 	return
 		
 		# FIFO queues for data fragments, queue for packets
 		# waiting to be sent, and queue for packets that
@@ -196,6 +183,7 @@ class Socket:
 		dataQ = deque()
 		packetQ = deque()
 		sentQ = deque()
+		lastSeqNum = self.seq.num
 
 		# break up message into chunks (dataQ)
 		for i in range(0, len(msg), Packet.DATA_LENGTH):
@@ -238,31 +226,30 @@ class Socket:
 			# send packets (without waiting for ack)
 			# until sendWindow is 0 or all packets
 			# have been sent
-			print("sending")
-			while self.sendWindow and packetQ:
+			sendWindow = self.sendWindow
+			while sendWindow and packetQ:
 				# grab a packet from end the list
 				packet = packetQ.popleft()
 
 				# send packet
 				self.sendto(packet, self.destAddr)
+				lastSeqNum = packet.header.fields["seq"]
 
 				# decrement send window, add 
 				# to sentQ
-				self.sendWindow -= 1
+				sendWindow -= 1
 				sentQ.append(packet)
 
 			# wait for ack
 			try:
 				# wait for ACK or SYNACK (resent)
-				print("receiving ack")
 				data, addr = self.recvfrom(self.recvWindow)
-				print("receieved ack")
-				packet = self._packet(data, checkSeq=False)
+				packet = self._packet(data, checkSeq=False, checkAck=lastSeqNum)
 
 			except socket.timeout:
 
 				# reset send window and resend last packet
-				self.sendWindow = 1
+				sendWindow = 1
 				resendsRemaining -= 1
 				logging.debug("send() timeout")
 				logging.debug("resends: "  + str(resendsRemaining))
@@ -278,9 +265,19 @@ class Socket:
 					continue
 
 			else:
+				sendWindow += 1
+				# test is ack mismatch occured
+				if isinstance(packet, int):
+					logging.debug("ACK MISMATCH:")
+					logging.debug("seqnum: " + str(lastSeqNum))
+					logging.debug(packet)
+					logging.debug(sentQ)
 
+					while packet < 0:
+						packetQ.appendleft(sentQ.pop())
+						packet += 1	
 
-				if packet.checkAttrs(("SYN","ACK"), exclusive=True):
+				elif packet.checkAttrs(("SYN","ACK"), exclusive=True):
 					# resend ACK acknowledging SYNACK
 					self._sendACK()
 
@@ -297,12 +294,13 @@ class Socket:
 					# size (no positive flow control), 
 					# remove packet from sentQ
 					self.seq.reset(packet.header.fields["ack"])
-					self.sendWindow += 1
+
 					resendsRemaining = self.resendLimit
 					# pop off packet that was just acked
 					# (except for final ack)
 					if sentQ:
 						sentQ.popleft()
+
 
 	def recv(self):
 		"""receives a message"""
@@ -376,19 +374,10 @@ class Socket:
 		return message
 
 	def sendto(self, packet, addr):
-		logging.debug("sendto: " + str(packet))
+		name = "sender" if self.isSender else "receiver"
+		logging.debug(name + ": sendto: " + str(packet))
 		logging.debug("")
-		nr = random.random() 
-		if(nr < 0.9):
-			if(nr < 0.1):
-				packet.header.fields["checksum"] = 2
-				self._socket.sendto(packet.pickle(), addr)
-				print("		corrupted:" + str(packet))
-			else:
-				self._socket.sendto(packet.pickle(), addr)
-				print("		sent:" + str(packet))
-		else:
-			print("		dropped:" + str(packet))
+		self._socket.sendto(packet.pickle(), addr)
 
 	def recvfrom(self, recvWindow, expectedAttrs=None):
 		while True:
@@ -401,7 +390,8 @@ class Socket:
 				else:
 					raise e
 
-		logging.debug("recvfrom: " + str(Packet.unpickle(data)))
+		name = "sender" if self.isSender else "receiver"
+		logging.debug(name + ": recvfrom: " + str(Packet.unpickle(data)))
 		logging.debug("")
 		return (data, addr)
 
@@ -419,28 +409,28 @@ class Socket:
 
 		waitLimit = self.resendLimit
 		while waitLimit:
+			
 			self.sendto(packet, self.destAddr)
-			waitLimit -= 1
+
 			try:
 				data, addr = self.recvfrom(self.recvWindow)
 				packet = self._packet(data, checkSeq=False)
 
 			except socket.timeout:
-
-				# reset send window and resend last packet
-				self.sendWindow = 1
-				resendsRemaining -= 1
+				waitLimit -= 1
+				continue
 
 			except RxPException as e:
 				if(e.type == RxPException.INVALID_CHECKSUM):
 					continue
 			else:
 				if packet.checkAttrs(("ACK",), exclusive=True):
+					self._socket.close()
 					break
+				else:
+					waitLimit -= 1
 
-
-
-	def _packet(self, data, addr=None, checkSeq=True):
+	def _packet(self, data, addr=None, checkSeq=True, checkAck=False):
 		""" reconstructs a packet from data and verifies
 		checksum and address (if addr is not None).
 		"""
@@ -458,6 +448,7 @@ class Socket:
 				packet.header.fields["attrs"])
 			isSYN = packet.checkAttrs(("SYN",), exclusive=True)
 			isACK = packet.checkAttrs(("ACK",), exclusive=True)
+			
 			packetSeqNum = packet.header.fields["seq"]
 			socketAckNum = self.ack.num
 			
@@ -467,6 +458,21 @@ class Socket:
 					RxPException.SEQ_MISMATCH)
 			elif not isACK:
 				self.ack.next()
+
+		# if checkAck is sent, it should be set to the
+		# expected ack num
+		if checkAck:
+
+			attrs = PacketAttributes.unpickle(
+				packet.header.fields["attrs"])
+			
+			packetAckNum = packet.header.fields["ack"]
+
+			ackMismatch = (int(packetAckNum) - checkAck - 1)
+
+			if packetAckNum and ackMismatch:
+				logging.debug("acknum: " + str(packetAckNum))
+				return ackMismatch
 
 		return packet
 
@@ -492,7 +498,6 @@ class Socket:
 		# (no response)
 		resendsRemaining = self.resendLimit
 		while resendsRemaining:
-			print("request send token")
 
 			# send SYN
 			self.sendto(packet, self.destAddr)
@@ -528,7 +533,6 @@ class Socket:
 
 		resendsRemaining = self.resendLimit
 		while resendsRemaining:
-			print("sending send token accept")
 
 			# send SRQ, ACK
 			self.sendto(packet, self.destAddr)
@@ -545,8 +549,6 @@ class Socket:
 					break
 
 		self.isSender = False
-
-		print("receiver now")
 
 	def _waitFor(self, attr):
 
@@ -611,14 +613,14 @@ class Socket:
 			recvWindow=self.recvWindow,
 			attrs=attrs
 			)
-		packet = Packet(header)
+		synack = Packet(header)
 		self.seq.next()
 
 		resendsRemaining = self.resendLimit
 		while resendsRemaining:
 
 			# send SYNACK
-			self.sendto(packet, self.destAddr)
+			self.sendto(synack, self.destAddr)
 
 			# wait to receive ACK. Only break out of loop
 			# when ACK is received (or resendLimit exceeded)
@@ -665,7 +667,7 @@ class Packet:
 	# or receiver (bytes)
 	MAX_WINDOW_SIZE = 65485
 	# Ethernet MTU (1500) - UDP header
-	DATA_LENGTH = 3 #1492
+	DATA_LENGTH = 3 #1000
 	STRING_ENCODING = 'UTF-8'
 
 	def __init__(self, header=None, data=""):

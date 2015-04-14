@@ -4,7 +4,7 @@ import sys
 import socket
 
 MAX_QUEUE_CONNECTIONS = 3
-DEBUG_MODE = True
+DEBUG_MODE = False
 lock = threading.Lock()
 cond = threading.Condition(lock)
 blocking = False
