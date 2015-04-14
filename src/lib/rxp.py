@@ -367,6 +367,7 @@ class Socket:
 
 				if packet.checkAttrs(("CLOSE", )):
 					self._sendACK()
+					self._socket.close()
 					break
 
 		# if not waitLimit:
