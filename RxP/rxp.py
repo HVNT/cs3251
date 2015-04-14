@@ -117,7 +117,7 @@ class Socket:
 		if self.srcAddr is None:
 			raise RxPException("Socket not bound")
 
-		waitLimit = self.resendLimit
+		waitLimit = self.resendLimit*100
 		while waitLimit:
 			# wait to receive SYN
 			try:
@@ -196,6 +196,7 @@ class Socket:
 		dataQ = deque()
 		packetQ = deque()
 		sentQ = deque()
+		lastSeqNum = self.seq.num
 
 		# break up message into chunks (dataQ)
 		for i in range(0, len(msg), Packet.DATA_LENGTH):
@@ -245,6 +246,7 @@ class Socket:
 
 				# send packet
 				self.sendto(packet, self.destAddr)
+				lastSeqNum = packet.header.fields["seq"]
 
 				# decrement send window, add 
 				# to sentQ
@@ -257,7 +259,7 @@ class Socket:
 				print("receiving ack")
 				data, addr = self.recvfrom(self.recvWindow)
 				print("receieved ack")
-				packet = self._packet(data, checkSeq=False)
+				packet = self._packet(data, checkSeq=False, checkAck=lastSeqNum)
 
 			except socket.timeout:
 
@@ -279,8 +281,18 @@ class Socket:
 
 			else:
 
+				# test is ack mismatch occured
+				if isinstance(packet, int):
+					logging.debug("ACK MISMATCH:")
+					logging.debug("seqnum: " + str(lastSeqNum))
+					logging.debug(packet)
+					logging.debug(sentQ)
 
-				if packet.checkAttrs(("SYN","ACK"), exclusive=True):
+					while packet < 0:
+						packetQ.appendleft(sentQ.pop())
+						packet += 1	
+
+				elif packet.checkAttrs(("SYN","ACK"), exclusive=True):
 					# resend ACK acknowledging SYNACK
 					self._sendACK()
 
@@ -376,7 +388,7 @@ class Socket:
 		return message
 
 	def sendto(self, packet, addr):
-		name = "client" if self.isSender else "server"
+		name = "sender" if self.isSender else "receiver"
 		logging.debug(name + ": sendto: " + str(packet))
 		logging.debug("")
 		self._socket.sendto(packet.pickle(), addr)
@@ -392,7 +404,7 @@ class Socket:
 				else:
 					raise e
 
-		name = "client" if self.isSender else "server"
+		name = "sender" if self.isSender else "receiver"
 		logging.debug(name + ": recvfrom: " + str(Packet.unpickle(data)))
 		logging.debug("")
 		return (data, addr)
@@ -419,9 +431,8 @@ class Socket:
 				packet = self._packet(data, checkSeq=False)
 
 			except socket.timeout:
-
-				# reset send window and resend last packet
 				waitLimit -= 1
+				continue
 
 			except RxPException as e:
 				if(e.type == RxPException.INVALID_CHECKSUM):
@@ -430,10 +441,10 @@ class Socket:
 				if packet.checkAttrs(("ACK",), exclusive=True):
 					self._socket.close()
 					break
+				else:
+					waitLimit -= 1
 
-
-
-	def _packet(self, data, addr=None, checkSeq=True):
+	def _packet(self, data, addr=None, checkSeq=True, checkAck=False):
 		""" reconstructs a packet from data and verifies
 		checksum and address (if addr is not None).
 		"""
@@ -451,6 +462,7 @@ class Socket:
 				packet.header.fields["attrs"])
 			isSYN = packet.checkAttrs(("SYN",), exclusive=True)
 			isACK = packet.checkAttrs(("ACK",), exclusive=True)
+			
 			packetSeqNum = packet.header.fields["seq"]
 			socketAckNum = self.ack.num
 			
@@ -460,6 +472,21 @@ class Socket:
 					RxPException.SEQ_MISMATCH)
 			elif not isACK:
 				self.ack.next()
+
+		# if checkAck is sent, it should be set to the
+		# expected ack num
+		if checkAck:
+
+			attrs = PacketAttributes.unpickle(
+				packet.header.fields["attrs"])
+			
+			packetAckNum = packet.header.fields["ack"]
+
+			ackMismatch = (int(packetAckNum) - checkAck - 1)
+
+			if packetAckNum and ackMismatch:
+				logging.debug("acknum: " + str(packetAckNum))
+				return ackMismatch
 
 		return packet
 
