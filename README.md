@@ -15,5 +15,5 @@
 
 **Known Problems**
 
-	On certain runs, NetEmu forwards packets from one socket back to the same socket. NetEmu also continuously sends repeat packets until the client or server times out, even though the duplicate packets option is not set.
+	On random runs, NetEmu routes packets from one socket back to the same socket. This results in the sender receiving data packets rather than ACKS and effectively results in the data packets being dropped (in the eyes of the receiver).
 
