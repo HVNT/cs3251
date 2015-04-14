@@ -378,7 +378,17 @@ class Socket:
 	def sendto(self, packet, addr):
 		logging.debug("sendto: " + str(packet))
 		logging.debug("")
-		self._socket.sendto(packet.pickle(), addr)
+		nr = random.random() 
+		if(nr < 0.9):
+			if(nr < 0.1):
+				packet.header.fields["checksum"] = 2
+				self._socket.sendto(packet.pickle(), addr)
+				print("		corrupted:" + str(packet))
+			else:
+				self._socket.sendto(packet.pickle(), addr)
+				print("		sent:" + str(packet))
+		else:
+			print("		dropped:" + str(packet))
 
 	def recvfrom(self, recvWindow, expectedAttrs=None):
 		while True:
