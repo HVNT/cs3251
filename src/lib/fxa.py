@@ -117,6 +117,7 @@ class FxA:
 		while(not recvd):
 			if(DEBUG_MODE):
 				print("receiving size..")
+			self.socket.timeout = 1
 			resp = self.socket.recv() #receive the size of packets
 			resp = bytes.decode(resp)
 			if(DEBUG_MODE):
@@ -241,7 +242,7 @@ class FxA:
 		if(DEBUG_MODE):
 			print("receiving..")
 		try:
-			self.socket.timeout = 10
+			self.socket.timeout = 1
 			recvd = self.socket.recv()
 		except socket.timeout:
 			#probably should close socket of the client
